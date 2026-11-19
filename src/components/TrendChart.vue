@@ -27,15 +27,12 @@ const W = 800,
   bottom = 25;
 const points = computed(() =>
   props.history.filter(
-    (p) =>
-      p.time >=
-      Date.now() / 1000 - ranges.find((r) => r.label === range.value)!.seconds,
+    (p) => p.time >= Date.now() / 1000 - ranges.find((r) => r.label === range.value)!.seconds,
   ),
 );
 const agentIds = computed(() =>
-  [...new Set(points.value.flatMap((p) => p.agents.map(([a]) => a)))].filter(
-    (a) =>
-      points.value.some((p) => p.agents.some(([id, v]) => id === a && v > 0)),
+  [...new Set(points.value.flatMap((p) => p.agents.map(([a]) => a)))].filter((a) =>
+    points.value.some((p) => p.agents.some(([id, v]) => id === a && v > 0)),
   ),
 );
 const series = computed(() =>
@@ -45,9 +42,7 @@ const series = computed(() =>
         .map((a) => ({
           id: a,
           color: AGENT_META[a]?.color || "#548f80",
-          values: points.value.map(
-            (p) => p.agents.find(([id]) => id === a)?.[1] || 0,
-          ),
+          values: points.value.map((p) => p.agents.find(([id]) => id === a)?.[1] || 0),
         }))
     : [
         {
@@ -65,13 +60,10 @@ const max = computed(() => {
   const unit = metric.value === "cpu" ? 10 : peak >= 1e9 ? 5e9 : 1e8;
   return Math.ceil((peak * 1.12) / unit) * unit;
 });
-const x = (i: number) =>
-  left + (i / Math.max(points.value.length - 1, 1)) * (W - left - right);
+const x = (i: number) => left + (i / Math.max(points.value.length - 1, 1)) * (W - left - right);
 const y = (v: number) => H - bottom - (v / max.value) * (H - bottom - top);
 const line = (pts: [number, number][]) =>
-  pts
-    .map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`)
-    .join(" ");
+  pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
 const areas = computed(() => {
   let base = points.value.map(() => 0);
   return series.value.map((s) => {
@@ -85,24 +77,15 @@ const areas = computed(() => {
     };
   });
 });
-const start = computed(
-    () => points.value[0]?.time || Date.now() / 1000 - 86400,
-  ),
+const start = computed(() => points.value[0]?.time || Date.now() / 1000 - 86400),
   end = computed(() => points.value.at(-1)?.time || Date.now() / 1000);
-const selected = computed(() =>
-  hover.value === null ? null : points.value[hover.value],
-);
+const selected = computed(() => (hover.value === null ? null : points.value[hover.value]));
 function move(e: MouseEvent) {
   const bounds = (e.currentTarget as SVGElement).getBoundingClientRect();
-  const pos =
-    (((e.clientX - bounds.left) / bounds.width) * W - left) /
-    (W - left - right);
+  const pos = (((e.clientX - bounds.left) / bounds.width) * W - left) / (W - left - right);
   hover.value = Math.max(
     0,
-    Math.min(
-      points.value.length - 1,
-      Math.round(pos * (points.value.length - 1)),
-    ),
+    Math.min(points.value.length - 1, Math.round(pos * (points.value.length - 1))),
   );
 }
 function toggle(a: string) {
@@ -137,8 +120,8 @@ const time = (t: number) =>
       />
     </div>
     <div class="chart-meta">
-      <label class="metric-select"
-        ><UiSelect
+      <label class="metric-select">
+        <UiSelect
           v-model="metric"
           :label="t('Chart metric')"
           compact
@@ -146,26 +129,28 @@ const time = (t: number) =>
             { value: 'storage', label: t('Storage usage') },
             { value: 'memory', label: t('Agent memory') },
             { value: 'cpu', label: t('Agent CPU') },
-          ]" /></label
-      ><span class="chart-total"
-        >{{
-          metric === "cpu"
-            ? `${(totals.at(-1) || 0).toFixed(1)}%`
-            : bytes(totals.at(-1) || 0)
-        }}
-        <span v-if="points.length < 2">{{ t("building baseline") }}</span></span
-      >
+          ]"
+        />
+      </label>
+      <span class="chart-total">
+        {{ metric === "cpu" ? `${(totals.at(-1) || 0).toFixed(1)}%` : bytes(totals.at(-1) || 0) }}
+        <span v-if="points.length < 2">{{ t("building baseline") }}</span>
+      </span>
     </div>
     <div class="chart-canvas">
-      <div v-if="points.length < 2" class="chart-wait">
-        <TrendingUp :size="28" /><strong>{{
-          t("Your history starts here")
-        }}</strong
-        ><span>{{
-          points.length === 1
-            ? t("The next sample arrives within a minute.")
-            : t("No samples in this time range. Try a wider range.")
-        }}</span>
+      <div
+        v-if="points.length < 2"
+        class="chart-wait"
+      >
+        <TrendingUp :size="28" />
+        <strong>{{ t("Your history starts here") }}</strong>
+        <span>
+          {{
+            points.length === 1
+              ? t("The next sample arrives within a minute.")
+              : t("No samples in this time range. Try a wider range.")
+          }}
+        </span>
       </div>
       <svg
         v-else
@@ -185,11 +170,21 @@ const time = (t: number) =>
             x2="0"
             y2="1"
           >
-            <stop :stop-color="a.color" stop-opacity=".36" />
-            <stop offset="1" :stop-color="a.color" stop-opacity=".12" />
+            <stop
+              :stop-color="a.color"
+              stop-opacity=".36"
+            />
+            <stop
+              offset="1"
+              :stop-color="a.color"
+              stop-opacity=".12"
+            />
           </linearGradient>
         </defs>
-        <g v-for="i in [0, 1, 2, 3]" :key="i">
+        <g
+          v-for="i in [0, 1, 2, 3]"
+          :key="i"
+        >
           <line
             :x1="left"
             :y1="y((max * i) / 3)"
@@ -211,8 +206,14 @@ const time = (t: number) =>
             }}
           </text>
         </g>
-        <g v-for="a in areas" :key="a.id">
-          <path :d="a.path" :fill="`url(#${id}-${a.id})`" />
+        <g
+          v-for="a in areas"
+          :key="a.id"
+        >
+          <path
+            :d="a.path"
+            :fill="`url(#${id}-${a.id})`"
+          />
           <path
             :d="a.stroke"
             fill="none"
@@ -257,11 +258,10 @@ const time = (t: number) =>
           left: `${Math.max(12, Math.min(77, (x(hover) / W) * 100))}%`,
         }"
       >
-        <strong>{{ time(selected.time) }}</strong><span>{{
-          metric === "cpu"
-            ? t("{0}% CPU", totals[hover].toFixed(1))
-            : bytes(totals[hover])
-        }}</span>
+        <strong>{{ time(selected.time) }}</strong>
+        <span>
+          {{ metric === "cpu" ? t("{0}% CPU", totals[hover].toFixed(1)) : bytes(totals[hover]) }}
+        </span>
       </div>
     </div>
     <div class="chart-legend">
@@ -271,17 +271,18 @@ const time = (t: number) =>
         :class="{ 'disabled-legend': hidden.has(a) }"
         @click="toggle(a)"
       >
-        <i :style="{ background: AGENT_META[a]?.color || '#659c8a' }" />{{
-          AGENT_META[a]?.name ||
-          (a === "memory" ? t("Resident memory") : t("CPU utilization"))
-        }}</button
-      ><span class="chart-footnote">{{
-        metric === "storage"
-          ? t("Logical file size")
-          : metric === "memory"
-            ? t("Sum of readable RSS")
-            : t("100% = one CPU core")
-      }}</span>
+        <i :style="{ background: AGENT_META[a]?.color || '#659c8a' }" />
+        {{ AGENT_META[a]?.name || (a === "memory" ? t("Resident memory") : t("CPU utilization")) }}
+      </button>
+      <span class="chart-footnote">
+        {{
+          metric === "storage"
+            ? t("Logical file size")
+            : metric === "memory"
+              ? t("Sum of readable RSS")
+              : t("100% = one CPU core")
+        }}
+      </span>
     </div>
   </section>
 </template>

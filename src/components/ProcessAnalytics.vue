@@ -2,19 +2,8 @@
 import { computed, ref, shallowRef, watch } from "vue";
 import { ArrowLeft, ChevronRight, Folder, Terminal } from "lucide-vue-next";
 import { t } from "../lib/i18n";
-import {
-  AGENT_META,
-  bytes,
-  delta,
-  compactPath,
-  type Snapshot,
-  type Process,
-} from "../lib/types";
-import {
-  projectGroups,
-  projectFor,
-  type ResourcePoint,
-} from "../lib/resources";
+import { AGENT_META, bytes, delta, compactPath, type Snapshot, type Process } from "../lib/types";
+import { projectGroups, projectFor, type ResourcePoint } from "../lib/resources";
 import { resourceHistory } from "../lib/client";
 import { message } from "../lib/notifications";
 import UiTabs from "./UiTabs.vue";
@@ -42,9 +31,7 @@ const project = ref<string | null>(null),
   history = shallowRef<ResourcePoint[]>([]),
   loading = ref(false),
   error = ref("");
-const groups = computed(() =>
-  projectGroups(props.data.processes, props.data.roots),
-);
+const groups = computed(() => projectGroups(props.data.processes, props.data.roots));
 watch(
   () => props.focusProcess,
   (value) => {
@@ -57,27 +44,19 @@ watch(
   },
   { immediate: true },
 );
-const selectedProject = computed(() =>
-  groups.value.find((g) => g.id === project.value),
-);
+const selectedProject = computed(() => groups.value.find((g) => g.id === project.value));
 const processes = computed(() =>
   project.value ? selectedProject.value?.processes || [] : props.data.processes,
 );
-const scope = computed(() =>
-  process.value ? "process" : project.value ? "project" : "all",
-);
+const scope = computed(() => (process.value ? "process" : project.value ? "project" : "all"));
 const scopeId = computed(() =>
-  process.value
-    ? `${process.value.pid}:${process.value.startTime}`
-    : project.value || "all",
+  process.value ? `${process.value.pid}:${process.value.startTime}` : project.value || "all",
 );
 const rows = computed(() =>
   project.value
     ? processes.value
         .filter((p) =>
-          `${p.name} ${p.pid} ${p.agent}`
-            .toLowerCase()
-            .includes(props.query.toLowerCase()),
+          `${p.name} ${p.pid} ${p.agent}`.toLowerCase().includes(props.query.toLowerCase()),
         )
         .map((p) => ({
           id: `${p.pid}:${p.startTime}`,
@@ -111,16 +90,12 @@ const rows = computed(() =>
         })),
 );
 const ordered = computed(() =>
-  [...rows.value].sort((a, b) =>
-    sort.value === "cpu" ? b.cpu - a.cpu : b.memory - a.memory,
-  ),
+  [...rows.value].sort((a, b) => (sort.value === "cpu" ? b.cpu - a.cpu : b.memory - a.memory)),
 );
 const current = computed(() => {
   const ps = process.value
     ? props.data.processes.filter(
-        (p) =>
-          p.pid === process.value!.pid &&
-          p.startTime === process.value!.startTime,
+        (p) => p.pid === process.value!.pid && p.startTime === process.value!.startTime,
       )
     : processes.value;
   return {
@@ -140,19 +115,13 @@ async function load() {
   loading.value = true;
   error.value = "";
   try {
-    const result = await resourceHistory(
-      scope.value,
-      scopeId.value,
-      seconds.value,
-    );
+    const result = await resourceHistory(scope.value, scopeId.value, seconds.value);
     if (gen === generation) history.value = result;
   } catch (e) {
     if (gen === generation) {
       error.value = String(e);
       message(
-        t(
-          "Resource history is temporarily unavailable. Current readings remain visible.",
-        ),
+        t("Resource history is temporarily unavailable. Current readings remain visible."),
         "error",
         { action: load, actionLabel: t("Retry") },
       );
@@ -176,11 +145,7 @@ watch(
 watch([project, sort, () => props.query, pageSize], () => (page.value = 1));
 watch(
   () => ordered.value.length,
-  (n) =>
-    (page.value = Math.min(
-      page.value,
-      Math.max(1, Math.ceil(n / pageSize.value)),
-    )),
+  (n) => (page.value = Math.min(page.value, Math.max(1, Math.ceil(n / pageSize.value)))),
 );
 function drill(row: (typeof rows.value)[number]) {
   if (row.process) process.value = row.process;
@@ -200,11 +165,7 @@ function back() {
       <div>
         <h2>{{ t("CPU and memory analysis") }}</h2>
         <p>
-          {{
-            t(
-              "Compare projects, then inspect an individual process and its resource history.",
-            )
-          }}
+          {{ t("Compare projects, then inspect an individual process and its resource history.") }}
         </p>
       </div>
       <UiTabs
@@ -218,61 +179,74 @@ function back() {
       />
     </div>
     <div class="resource-breadcrumb">
-      <button v-if="project || process" class="button small" @click="back">
-        <ArrowLeft :size="14" />{{ t("Back") }}</button
-      ><button
+      <button
+        v-if="project || process"
+        class="button small"
+        @click="back"
+      >
+        <ArrowLeft :size="14" />
+        {{ t("Back") }}
+      </button>
+      <button
         class="text-button"
         @click="
           project = null;
           process = null;
         "
       >
-        {{ t("All Agent processes") }}</button
-      ><template v-if="project"
-        ><ChevronRight :size="13" /><span :title="selectedProject?.path">{{
-          selectedProject?.path
-            ? compactPath(selectedProject.path)
-            : t("Unassigned project")
-        }}</span></template
-      ><template v-if="process"
-        ><ChevronRight :size="13" /><strong
-          >{{ process.name }} · PID {{ process.pid }}</strong
-        ></template
-      >
+        {{ t("All Agent processes") }}
+      </button>
+      <template v-if="project">
+        <ChevronRight :size="13" />
+        <span :title="selectedProject?.path">
+          {{ selectedProject?.path ? compactPath(selectedProject.path) : t("Unassigned project") }}
+        </span>
+      </template>
+      <template v-if="process">
+        <ChevronRight :size="13" />
+        <strong>{{ process.name }} · PID {{ process.pid }}</strong>
+      </template>
     </div>
     <div class="resource-curves">
       <ResourceCurve
         :points="points"
         metric="cpu"
         :loading="loading"
-      /><ResourceCurve :points="points" metric="memory" :loading="loading" />
+      />
+      <ResourceCurve
+        :points="points"
+        metric="memory"
+        :loading="loading"
+      />
     </div>
-    <div v-if="process" class="resource-process-context">
-      <strong>{{ t("Project attribution") }}</strong><span>{{
-        projectFor(process, data.processes, data.roots).path ||
-        t("Unassigned project")
-      }}</span
-      ><small>{{
-        t(
-          evidenceLabels[
-            projectFor(process, data.processes, data.roots).evidence
-          ] || "Project evidence unavailable",
-        )
-      }}</small>
-      <small v-if="!current.processes">{{
-        t(
-          "This process is no longer observed. The curve shows recorded samples; the current reading is zero.",
-        )
-      }}</small>
+    <div
+      v-if="process"
+      class="resource-process-context"
+    >
+      <strong>{{ t("Project attribution") }}</strong>
+      <span>
+        {{ projectFor(process, data.processes, data.roots).path || t("Unassigned project") }}
+      </span>
+      <small>
+        {{
+          t(
+            evidenceLabels[projectFor(process, data.processes, data.roots).evidence] ||
+              "Project evidence unavailable",
+          )
+        }}
+      </small>
+      <small v-if="!current.processes">
+        {{
+          t(
+            "This process is no longer observed. The curve shows recorded samples; the current reading is zero.",
+          )
+        }}
+      </small>
     </div>
-    <template v-else
-      ><div class="resource-ranking-heading">
+    <template v-else>
+      <div class="resource-ranking-heading">
         <h3>
-          {{
-            project
-              ? t("Processes in this project")
-              : t("Projects by resource usage")
-          }}
+          {{ project ? t("Processes in this project") : t("Projects by resource usage") }}
         </h3>
         <UiSelect
           v-model="sort"
@@ -285,10 +259,10 @@ function back() {
       </div>
       <div class="resource-ranking">
         <div class="resource-ranking-header">
-          <span>{{ project ? t("Process") : t("Project") }}</span><span
-            >CPU</span
-          ><span>{{ t("Memory") }}</span
-          ><span>{{ t("Processes") }}</span>
+          <span>{{ project ? t("Process") : t("Project") }}</span>
+          <span>CPU</span>
+          <span>{{ t("Memory") }}</span>
+          <span>{{ t("Processes") }}</span>
         </div>
         <button
           v-for="row in ordered.slice((page - 1) * pageSize, page * pageSize)"
@@ -296,25 +270,35 @@ function back() {
           class="resource-ranking-row"
           @click="drill(row)"
         >
-          <span class="resource-ranking-name"
-            ><component :is="project ? Terminal : Folder" :size="17" /><span
-              ><strong>{{ row.name }}</strong
-              ><small :title="row.path">{{
-                compactPath(row.path)
-              }}</small></span
-            ></span
-          ><span
-            ><strong>{{ row.cpu.toFixed(1) }}%</strong
-            ><small
-              >{{ row.cpuDelta >= 0 ? "+" : "" }}{{ row.cpuDelta.toFixed(1) }}
-              {{ t("pp") }}</small
-            ></span
-          ><span
-            ><strong>{{ bytes(row.memory) }}</strong
-            ><small>{{ delta(row.memoryDelta) }}</small></span
-          ><span>{{ row.count }}<ChevronRight :size="14" /></span>
+          <span class="resource-ranking-name">
+            <component
+              :is="project ? Terminal : Folder"
+              :size="17"
+            />
+            <span>
+              <strong>{{ row.name }}</strong>
+              <small :title="row.path">{{ compactPath(row.path) }}</small>
+            </span>
+          </span>
+          <span>
+            <strong>{{ row.cpu.toFixed(1) }}%</strong>
+            <small>
+              {{ row.cpuDelta >= 0 ? "+" : "" }}{{ row.cpuDelta.toFixed(1) }} {{ t("pp") }}
+            </small>
+          </span>
+          <span>
+            <strong>{{ bytes(row.memory) }}</strong>
+            <small>{{ delta(row.memoryDelta) }}</small>
+          </span>
+          <span>
+            {{ row.count }}
+            <ChevronRight :size="14" />
+          </span>
         </button>
-        <p v-if="!ordered.length" class="resource-ranking-empty">
+        <p
+          v-if="!ordered.length"
+          class="resource-ranking-empty"
+        >
           {{ t("No matching running processes") }}
         </p>
       </div>
@@ -324,7 +308,8 @@ function back() {
         v-model:page-size="pageSize"
         :total="ordered.length"
         :label="t('Resource ranking pagination')"
-    /></template>
+      />
+    </template>
     <p class="resource-analytics-note">
       {{
         t(

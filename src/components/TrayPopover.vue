@@ -23,29 +23,15 @@ const keyboardNavigation = ref(false);
 const current = shallowRef<Snapshot | null>(props.data || null);
 let unlisten: (() => void) | undefined;
 const data = computed(() => props.data || current.value);
-const memory = computed(
-  () => data.value?.agents.reduce((s, a) => s + a.memory, 0) || 0,
-);
-const cpu = computed(
-  () => data.value?.agents.reduce((s, a) => s + a.cpu, 0) || 0,
-);
-const storage = computed(
-  () => data.value?.agents.reduce((s, a) => s + a.storage, 0) || 0,
-);
-const cleanup = computed(
-  () => data.value?.agents.reduce((s, a) => s + a.reclaimable, 0) || 0,
-);
-const active = computed(
-  () => data.value?.agents.filter((a) => a.processes > 0).length || 0,
-);
+const memory = computed(() => data.value?.agents.reduce((s, a) => s + a.memory, 0) || 0);
+const cpu = computed(() => data.value?.agents.reduce((s, a) => s + a.cpu, 0) || 0);
+const storage = computed(() => data.value?.agents.reduce((s, a) => s + a.storage, 0) || 0);
+const cleanup = computed(() => data.value?.agents.reduce((s, a) => s + a.reclaimable, 0) || 0);
+const active = computed(() => data.value?.agents.filter((a) => a.processes > 0).length || 0);
 function receive(value: Snapshot) {
   current.value = value;
   setLocale(value.settings.language || "zh-CN");
-  setTheme(
-    value.settings.theme || "light",
-    value.settings.customBase,
-    value.settings.customAccent,
-  );
+  setTheme(value.settings.theme || "light", value.settings.customBase, value.settings.customAccent);
 }
 onMounted(async () => {
   document.addEventListener("keydown", dismissOnEscape);
@@ -85,16 +71,16 @@ async function toggle() {
     @pointermove="keyboardNavigation = false"
   >
     <div class="popover-heading">
-      <img src="/icon.svg" alt="" />
+      <img
+        src="/icon.svg"
+        alt=""
+      />
       <div>
-        <strong>AgentLens</strong
-        ><span
-          ><i :class="{ paused: !data.monitoring }" />{{
-            data.monitoring
-              ? t("Watching your workspace")
-              : t("Monitoring paused")
-          }}</span
-        >
+        <strong>AgentLens</strong>
+        <span>
+          <i :class="{ paused: !data.monitoring }" />
+          {{ data.monitoring ? t("Watching your workspace") : t("Monitoring paused") }}
+        </span>
       </div>
       <button
         class="icon-button popover-close"
@@ -107,14 +93,17 @@ async function toggle() {
     </div>
     <div class="popover-resources">
       <div class="popover-resource">
-        <span class="popover-label"
-          ><MemoryStick :size="15" />{{ t("Agent memory") }}</span
-        ><strong>{{ bytes(memory) }}</strong
-        ><span
+        <span class="popover-label">
+          <MemoryStick :size="15" />
+          {{ t("Agent memory") }}
+        </span>
+        <strong>{{ bytes(memory) }}</strong>
+        <span
           :class="['resource-change', { rising: (data.memoryDelta || 0) > 0 }]"
           :title="t('Since last sample')"
-          >{{ delta(data.memoryDelta || 0) }}</span
         >
+          {{ delta(data.memoryDelta || 0) }}
+        </span>
         <div class="popover-meter">
           <i
             :style="{
@@ -124,57 +113,72 @@ async function toggle() {
         </div>
       </div>
       <div class="popover-resource">
-        <span class="popover-label"><Cpu :size="15" />{{ t("Agent CPU") }}</span
-        ><strong>{{ cpu.toFixed(1) }}<em>%</em></strong
-        ><span
+        <span class="popover-label">
+          <Cpu :size="15" />
+          {{ t("Agent CPU") }}
+        </span>
+        <strong>
+          {{ cpu.toFixed(1) }}
+          <em>%</em>
+        </strong>
+        <span
           :class="['resource-change', { rising: (data.cpuDelta || 0) > 0 }]"
           :title="t('Since last sample')"
-          >{{ (data.cpuDelta || 0) >= 0 ? "+" : "−"
-          }}{{ Math.abs(data.cpuDelta || 0).toFixed(1) }} {{ t("pp") }}</span
         >
+          {{ (data.cpuDelta || 0) >= 0 ? "+" : "−" }}{{ Math.abs(data.cpuDelta || 0).toFixed(1) }}
+          {{ t("pp") }}
+        </span>
         <div class="popover-meter cpu">
           <i :style="{ width: `${Math.min(100, cpu)}%` }" />
         </div>
       </div>
     </div>
     <div class="popover-details">
-      <span
-        ><HardDrive :size="14" />{{ t("Agent storage")
-        }}<b>{{ bytes(storage) }}</b></span
-      ><span
-        ><span class="popover-active-dot" />{{ t("Active agents")
-        }}<b
-          >{{ active
-          }}<small>
-            / {{ data.processes.length }} {{ t("processes") }}</small
-          ></b
-        ></span
-      >
+      <span>
+        <HardDrive :size="14" />
+        {{ t("Agent storage") }}
+        <b>{{ bytes(storage) }}</b>
+      </span>
+      <span>
+        <span class="popover-active-dot" />
+        {{ t("Active agents") }}
+        <b>
+          {{ active }}
+          <small>/ {{ data.processes.length }} {{ t("processes") }}</small>
+        </b>
+      </span>
     </div>
-    <button class="popover-cleanup" @click="open('Cleanup')">
-      <span class="popover-cleanup-icon"><Sparkles :size="17" /></span
-      ><span
-        ><strong>{{
-          cleanup ? t("Cleanup available") : t("No cleanup candidates")
-        }}</strong
-        ><small v-if="cleanup">{{ bytes(cleanup) }}</small></span
-      ><ArrowRight :size="15" />
+    <button
+      class="popover-cleanup"
+      @click="open('Cleanup')"
+    >
+      <span class="popover-cleanup-icon"><Sparkles :size="17" /></span>
+      <span>
+        <strong>{{ cleanup ? t("Cleanup available") : t("No cleanup candidates") }}</strong>
+        <small v-if="cleanup">{{ bytes(cleanup) }}</small>
+      </span>
+      <ArrowRight :size="15" />
     </button>
     <div class="popover-footer">
       <button @click="open('Overview')">
-        {{ t("Open AgentLens") }}<ArrowUpRight :size="12" /></button
-      ><button
+        {{ t("Open AgentLens") }}
+        <ArrowUpRight :size="12" />
+      </button>
+      <button
         class="icon-button"
-        :aria-label="
-          data.monitoring ? t('Pause monitoring') : t('Resume monitoring')
-        "
+        :aria-label="data.monitoring ? t('Pause monitoring') : t('Resume monitoring')"
         @click="toggle"
       >
-        <Pause v-if="data.monitoring" :size="14" /><Play
+        <Pause
+          v-if="data.monitoring"
+          :size="14"
+        />
+        <Play
           v-else
           :size="14"
-        /></button
-      ><button
+        />
+      </button>
+      <button
         class="icon-button"
         :aria-label="t('Settings')"
         @click="open('Settings')"

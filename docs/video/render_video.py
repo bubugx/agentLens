@@ -1,304 +1,249 @@
-"""Render AgentLens's deterministic 1080p introduction from the local storyboard.
-
-Usage: python docs/video/render_video.py [--preview]
-The preview writes a contact sheet without encoding the full movie.
-"""
+"""Continuous resource-space film. Rebuild: python docs/video/render_video.py [--preview]."""
 from pathlib import Path
-import argparse, functools, json, math, os, re, subprocess, wave
+import argparse, functools, json, math, os, subprocess, re, wave
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import imageio_ffmpeg
-
-ROOT = Path(__file__).resolve().parents[2]
-HERE = Path(__file__).resolve().parent
-ASSETS = HERE / 'assets'
-OUT = ROOT / 'docs/media'
-OUT.mkdir(exist_ok=True)
-SPEC = json.loads((HERE/'storyboard.json').read_text())
-W,H,FPS=1920,1080,30
+ROOT=Path(__file__).resolve().parents[2]; HERE=Path(__file__).resolve().parent
+ASSETS=HERE/'assets'; OUT=ROOT/'docs/media'; OUT.mkdir(exist_ok=True)
+SPEC=json.loads((HERE/'storyboard.json').read_text()); W,H,FPS=1920,1080,30
 FFMPEG=os.environ.get('FFMPEG_BINARY',imageio_ffmpeg.get_ffmpeg_exe())
-CYAN=(105,237,224); WHITE=(235,245,250); MUTED=(141,164,185); AMBER=(244,185,114)
 CN=os.environ.get('AGENTLENS_CN_FONT','/System/Library/Fonts/PingFang.ttc')
 EN=os.environ.get('AGENTLENS_EN_FONT','/System/Library/Fonts/SFNS.ttf')
-MONO=os.environ.get('AGENTLENS_MONO_FONT','/System/Library/Fonts/SFNSMono.ttf')
-@functools.lru_cache(128)
-def font(size,kind='cn',weight=0):
- return ImageFont.truetype({'cn':CN,'en':EN,'mono':MONO}[kind],int(size),index=8 if weight and kind=='cn' else 2 if kind=='cn' else 0)
-def ease(x):
- x=max(0,min(1,x));return 1-(1-x)**3
-def smooth(x):
- x=max(0,min(1,x));return x*x*(3-2*x)
-def rgba(c,a=255):return tuple(c)+(int(a),)
-def text(im,xy,s,size=30,fill=WHITE,kind='cn',weight=0,anchor=None):
- d=ImageDraw.Draw(im);d.text(xy,s,font=font(size,kind,weight),fill=fill,anchor=anchor,spacing=int(size*.25))
-def line(im,points,c=CYAN,width=2):ImageDraw.Draw(im).line(points,fill=c,width=width)
-def panel(im,box,fill=(12,25,38,245),outline=(54,81,98,255),radius=22):
- def opaque(c):
-  if c is None or len(c)<4:return c
-  a=c[3]/255;return tuple(round(c[i]*a+(9,21,33)[i]*(1-a)) for i in range(3))+(255,)
- ImageDraw.Draw(im).rounded_rectangle(tuple(map(int,box)),radius,opaque(fill),opaque(outline),width=1)
-def pill(im,x,y,label,color=CYAN,size=22):
- tw=ImageDraw.Draw(im).textlength(label,font=font(size));panel(im,(x,y,x+tw+36,y+44),rgba(color,14),rgba(color,80),12);text(im,(x+18,y+6),label,size,color)
-def circle(im,c,r,outline=CYAN,width=2,fill=None):
- ImageDraw.Draw(im).ellipse((c[0]-r,c[1]-r,c[0]+r,c[1]+r),fill,outline,width)
-
-# A restrained navy field with a diffuse teal light; reused instead of recomputed per frame.
-y,x=np.mgrid[0:H,0:W]
-glow=np.exp(-(((x-1330)/850)**2+((y-440)/620)**2))
-base=np.zeros((H,W,3),np.uint8)
-for k,(b,a) in enumerate([(5,9),(11,21),(21,27)]):base[:,:,k]=b+a*glow
-BG=Image.fromarray(base).convert('RGBA')
-ICON=Image.open(ROOT/'src-tauri/icons/icon.png').convert('RGBA')
-SHOTS={n:Image.open(ASSETS/(n+'.png')).convert('RGB') for n in ['overview','storage','processes','process-detail','cleanup','activity']}
-# Crop to meaningful parts of the actual app, retaining its native preview badge.
-CROPS={
- 'overview':(280,0,2160,1070),
- 'storage':(280,0,2160,1280),
- 'process-detail':(280,0,2160,1320),
- 'cleanup':(280,0,2160,1190),
- 'activity':(280,0,2160,1250),
-}
-SHOTS={n:im.crop(CROPS.get(n,(0,0,*im.size))) for n,im in SHOTS.items()}
-
-scenes=SPEC['scenes']; cursor=.0
-for i,s in enumerate(scenes):
- s['start']=round(cursor,3);s['duration']=round(s['voiceDuration']+(.95 if i==len(scenes)-1 else .46),3)
- s['voiceStart']=round(cursor+.14,3);cursor+=s['duration']
-DURATION=math.ceil(cursor*FPS)/FPS
-assert DURATION<80, f'{DURATION}s exceeds delivery limit'
-
-# Captions follow synthesized word timings, grouped into short lines with original punctuation.
-captions=[]
+WHITE=(229,242,246); MINT=(111,255,208); BLUE=(118,167,255); AMBER=(255,191,108); PINK=(222,146,254)
+COLORS=[MINT,BLUE,AMBER,PINK]
+@functools.lru_cache(100)
+def font(n,bold=False):return ImageFont.truetype(CN,n,index=8 if bold else 2)
+def label(im,xy,s,size=28,fill=WHITE,anchor=None,bold=False):ImageDraw.Draw(im).text(xy,s,font=font(size,bold),fill=fill,anchor=anchor)
+def blend(a,b,p):return np.asarray(a)*(1-p)+np.asarray(b)*p
+def ease(p):p=np.clip(p,0,1);return p*p*(3-2*p)
+def interval(t,a,b):return float(ease((t-a)/(b-a)))
+scenes=SPEC['scenes'];cursor=0
 for s in scenes:
- words=json.loads((ASSETS/f"voice-{s['id']}.json").read_text())
- src=s['narration'];pos=0;group=[];group_start=0
- for wi,w in enumerate(words):
-  needle=w['text'];idx=src.find(needle,pos)
-  if idx<0:idx=pos
-  end=idx+len(needle)
-  while end<len(src) and src[end] in '，。；！？、,.!?;':end+=1
-  if not group:group_start=idx
-  group.append(w);pos=end
-  excerpt=src[group_start:end]
-  nextlen=len(words[wi+1]['text']) if wi+1<len(words) else 0
-  split_here = wi in {5,12,21,26} if s['id']=='intro' else ((len(excerpt)>=12 and excerpt[-1:] in '，。；！？') or len(excerpt)+nextlen>27 or wi==len(words)-1)
-  if split_here:
-   start=s['voiceStart']+group[0]['offset']/1e7
-   stop=s['voiceStart']+(group[-1]['offset']+group[-1]['duration'])/1e7+.06
-   captions.append({'start':start,'end':stop,'text':excerpt});group=[]
+ s['start']=cursor;s['voiceStart']=cursor+.20;s['duration']=s['voiceDuration']+.55;cursor+=s['duration']
+DURATION=math.ceil((cursor+1.3)*FPS)/FPS
+assert DURATION<80
+# Word timed captions. Keep source punctuation and avoid overlapping cues.
+CAP=[]
+for s in scenes:
+ words=json.loads((ASSETS/f"voice-{s['id']}.json").read_text());src=s['narration'];pos=0;group=[];startpos=0
+ for i,w in enumerate(words):
+  a=src.find(w['text'],pos);a=max(pos,a);b=a+len(w['text'])
+  while b<len(src) and src[b] in '，。；！？、,.!?;':b+=1
+  if not group:startpos=a
+  group.append(w);pos=b;txt=src[startpos:b]
+  if (len(txt)>=10 and txt[-1:] in '，。；！？') or len(txt)>23 or i==len(words)-1:
+   CAP.append(dict(start=s['voiceStart']+group[0]['offset']/1e7,end=s['voiceStart']+(w['offset']+w['duration'])/1e7+.04,text=txt));group=[]
+for a,b in zip(CAP,CAP[1:]):a['end']=min(a['end'],b['start']-.005)
+def stamp(t):
+ m=round(t*1000);return f'{m//3600000:02}:{m//60000%60:02}:{m//1000%60:02},{m%1000:03}'
+srt='\n\n'.join(f"{i+1}\n{stamp(c['start'])} --> {stamp(c['end'])}\n{c['text']}" for i,c in enumerate(CAP))+'\n'
+(OUT/'agentlens-intro-zh.srt').write_text(srt)
+(OUT/'agentlens-intro-zh.vtt').write_text('WEBVTT\n\n'+re.sub(r'(\d\d:\d\d:\d\d),(\d{3})',r'\1.\2',srt))
+# A single persistent world: files retain identity as their positions change.
+rng=np.random.default_rng(2411);N=108
+initial=rng.uniform([-1600,-650,-450],[1600,650,1100],(N,3))
+phase=rng.uniform(0,2*math.pi,N);radius=rng.uniform(115,320,N);group=np.arange(N)%3
+sizes=rng.uniform(12,27,N);stars=rng.uniform([-2500,-1400,-800],[2500,1400,2200],(280,3))
+y,x=np.mgrid[0:H,0:W];glow=np.exp(-((x-1000)/850)**2-((y-490)/540)**2)
+bg=np.zeros((H,W,3),np.uint8)
+for c,(base,extra) in enumerate([(3,4),(7,15),(13,19)]):bg[:,:,c]=base+glow*extra
+BG=Image.fromarray(bg)
+SHOTS={n:Image.open(ASSETS/f'{n}.png').convert('RGB') for n in ['overview','processes','storage','cleanup']}
+if (ASSETS/'adoption.png').exists():SHOTS['adoption']=Image.open(ASSETS/'adoption.png').convert('RGB')
+else:SHOTS['adoption']=SHOTS['overview']
+@functools.lru_cache(12)
+def resized_shot(name,width,frame=0):
+ frames=sorted((ASSETS/'motion'/name).glob('*.jpg'))
+ shot=Image.open(frames[min(frame,len(frames)-1)]).convert('RGB') if frames else SHOTS[name]
+ return shot.resize((width,round(width*shot.height/shot.width)),Image.Resampling.LANCZOS)
+def projection(points,t):
+ points=np.asarray(points,dtype=float);yaw=.28*math.sin(t*.13)+.07;pitch=.13
+ cx,sx=math.cos(yaw),math.sin(yaw);xx=points[...,0]*cx+points[...,2]*sx;zz=-points[...,0]*sx+points[...,2]*cx
+ yy=points[...,1]*math.cos(pitch)-zz*math.sin(pitch);zz=points[...,1]*math.sin(pitch)+zz*math.cos(pitch)
+ depth=np.maximum(450,zz+1850-100*math.sin(t*.06));scale=1100/depth
+ return np.stack([W*.52+xx*scale,H*.48+yy*scale],axis=-1),scale,depth
 
-# Adjacent word groups can touch; keep SRT cues strictly non-overlapping.
-for i,c in enumerate(captions[:-1]):
- c['end']=min(c['end'],captions[i+1]['start']-.005)
-
-def stamp(sec):
- ms=round(sec*1000);return f'{ms//3600000:02}:{ms//60000%60:02}:{ms//1000%60:02},{ms%1000:03}'
-subtitle_text='\n\n'.join(f"{i+1}\n{stamp(c['start'])} --> {stamp(c['end'])}\n{c['text']}" for i,c in enumerate(captions))+'\n'
-(OUT/'agentlens-intro-zh.srt').write_text(subtitle_text)
-(OUT/'agentlens-intro-zh.vtt').write_text('WEBVTT\n\n'+re.sub(r'(\d\d:\d\d:\d\d),(\d{3})',r'\1.\2',subtitle_text))
-
-def background(t):
- im=BG.copy();d=ImageDraw.Draw(im)
- for xx in range(0,W+80,80):d.line((xx,100,xx,H-110),fill=(20,37,50,150))
- for yy in range(130,H-90,80):d.line((60,yy,W-60,yy),fill=(20,37,50,150))
- # Fine travelling light traces and orbiting particles.
- for i in range(14):
-  xx=(i*163+t*(13+i%4*8))%W;yy=180+(i*173)%700
-  d.line((xx,yy,xx+22,yy),fill=(36,90,96,180),width=1)
-  d.ellipse((xx-2,yy-2,xx+2,yy+2),fill=(93,188,181,160))
- line(im,[(76,99),(1844,99)],(32,59,73),1)
- text(im,(116,40),'AGENTLENS',23,WHITE,'mono')
- circle(im,(87,58),9,CYAN,2);line(im,[(94,65),(101,72)],CYAN,3)
- text(im,(1845,42),'RESOURCE INTELLIGENCE / LOCAL FIRST',17,MUTED,'mono',anchor='ra')
+def render(t):
+ idx=max(i for i,s in enumerate(scenes) if s['start']<=min(t,scenes[-1]['start']))
+ s=scenes[idx];local=t-s['start'];p=local/s['duration'];im=BG.copy();d=ImageDraw.Draw(im)
+ # Directional stars and a moving floor establish camera movement throughout.
+ pts,sc,dep=projection(stars+np.array([0,0,(t*25)%900]),t)
+ for j,(px,py) in enumerate(pts):
+  if 0<px<W and 80<py<H-120:
+   v=int(42+45*sc[j]);d.line((px,py,px-2,py+sc[j]*5),fill=(v//2,v,v+15),width=1)
+ for k in range(14):
+  z=-500+k*210+(t*30)%210;ps,_,_=projection([[-2400,650,z],[2400,650,z]],t);d.line(list(map(tuple,ps)),fill=(13,35,43),width=1)
+ for xx in range(-2400,2600,240):
+  ps,_,_=projection([[xx,650,-500],[xx,650,2500]],t);d.line(list(map(tuple,ps)),fill=(11,28,36),width=1)
+ # Persistent lens: ellipse rings, optical ribs, travelling scan arc and light ray.
+ center=(W*.52,H*.46);cx,cy=center
+ lens_a=interval(t,4,10)*(1-interval(t,DURATION-4,DURATION-1))
+ glow_layer=Image.new('RGB',(W,H));gd=ImageDraw.Draw(glow_layer)
+ r=260+25*math.sin(t*.32)
+ for k in range(8):
+  rr=r+k*8;box=(cx-rr,cy-rr*.49,cx+rr,cy+rr*.49)
+  gd.arc(box,10+t*27+k*4,270+t*27+k*4,fill=(int(30*lens_a),int(90*lens_a),int(77*lens_a)),width=5)
+ im=Image.blend(im,Image.blend(im,glow_layer.filter(ImageFilter.GaussianBlur(16)),.50),.25);d=ImageDraw.Draw(im)
+ if lens_a:
+  for k in range(3):
+   rr=r+k*18;box=(cx-rr,cy-rr*.49,cx+rr,cy+rr*.49)
+   d.ellipse(box,outline=tuple(int(v*lens_a*.7) for v in MINT),width=1)
+   d.arc(box,t*40+k*45,t*40+60+k*45,fill=MINT,width=3)
+  for ang in np.linspace(0,2*math.pi,36,endpoint=False):
+   ca,sa=math.cos(ang+t*.1),math.sin(ang+t*.1)
+   d.line((cx+ca*(r+8),cy+sa*(r+8)*.49,cx+ca*(r+22),cy+sa*(r+22)*.49),fill=(51,103,98),width=2)
+ # Scatter becomes an attributed orbit map, then moves through evidence gates.
+ hubs=np.array([[-670,130,100],[0,-250,200],[670,130,100]])
+ orbit=np.zeros_like(initial)
+ for i in range(N):
+  a=phase[i]+t*(.15+(i%5)*.012);orbit[i]=hubs[group[i]]+[math.cos(a)*radius[i],math.sin(a)*radius[i]*.5,math.sin(a)*radius[i]*.6]
+ positions=blend(initial+np.stack([np.sin(phase+t*.1)*50,np.cos(phase+t*.18)*40,np.zeros(N)],1),orbit,interval(t,scenes[1]['start'],scenes[1]['start']+4))
+ sort_start=scenes[4]['start'];act_start=scenes[5]['start']
+ split=positions.copy()
+ for i in range(N):
+  lane=i%3;ang=phase[i]+t*.14
+  split[i]=[(-750,0,750)[lane]+math.cos(ang)*radius[i]*.7,math.sin(ang)*radius[i]*.65,200+math.sin(ang)*radius[i]]
+ positions=blend(positions,split,interval(t,sort_start,sort_start+3))
+ # Safe candidates arc into a recycle orbit, protected and active lanes remain.
+ if t>act_start:
+  for i in range(N):
+   if i%3==2:
+    q=interval(t,act_start+(i%11)*.2,act_start+4+(i%11)*.2)
+    target=np.array([1050+math.cos(t+i)*65,200+math.sin(t+i)*65,150.])
+    positions[i]=blend(positions[i],target,q);positions[i,1]-=math.sin(q*math.pi)*340
+ pts,sc,dep=projection(positions,t)
+ # Orbital tracks connect actual points to their tool's hub.
+ if scenes[1]['start']<t<sort_start:
+  for g in range(3+(t>=scenes[3]['start'])):
+   h=hubs[g] if g<3 else np.array([1040,-250,120]);c=COLORS[g]
+   ring=[[h[0]+math.cos(a)*340,h[1]+math.sin(a)*150,h[2]+math.sin(a)*190] for a in np.linspace(0,2*math.pi,100)]
+   pp,_,_=projection(ring,t);d.line(list(map(tuple,pp)),fill=tuple(int(v*.32) for v in c),width=1)
+   xy,_,_=projection([h],t);hx,hy=xy[0]
+   d.ellipse((hx-7,hy-7,hx+7,hy+7),fill=c)
+   label(im,(hx,hy-125),['Codex','Claude Code','Cursor','Lumo'][g],27,c,anchor='mm',bold=True)
+   if g==3:label(im,(hx,hy-90),'已接入',20,c,anchor='mm')
+ # A travelling optical plane gives the reveal a physical direction.
+ if scenes[1]['start']<t<scenes[1]['start']+5:
+  q=(t-scenes[1]['start'])/5;beamx=-1400+2800*q
+  plane,_,_=projection([[beamx,-650,-100],[beamx,600,-100]],t)
+  for k in range(14,0,-1):d.line(list(map(tuple,plane)),fill=(12,45+k*3,47+k*2),width=k*3)
+  d.line(list(map(tuple,plane)),fill=MINT,width=2)
+ # Draw tiny extruded file objects, depth-sorted; every object keeps its identity.
+ for i in np.argsort(-dep):
+  px,py=pts[i];sz=max(3,sizes[i]*sc[i]);c=COLORS[group[i]]
+  if t>=sort_start:c=[BLUE,AMBER,MINT][i%3]
+  if not (-30<px<W+30 and 80<py<H-130):continue
+  if idx in [2,3]:c=tuple(int(v*.65) for v in c)
+  d=ImageDraw.Draw(im);d.polygon([(px,py-sz),(px+sz,py-sz*.45),(px+sz,py+sz*.5),(px,py+sz)],fill=tuple(int(v*.45) for v in c),outline=c)
+  d.polygon([(px-sz,py-sz*.45),(px,py-sz),(px,py+sz),(px-sz,py+sz*.5)],fill=tuple(int(v*.12) for v in c),outline=tuple(int(v*.65) for v in c))
+  if i%7==0 and idx==0:label(im,(px+sz+10,py-12),['cache','node','logs','session'][i%4],17,tuple(int(v*.65) for v in c))
+ # A process pulse tree is part of the same resource space.
+ if idx==2:
+  fade=math.sin(min(1,p)*math.pi)**.4
+  for k,(name,c) in enumerate(zip(['仍在工作','常驻保留','继续观测','建议处理'],COLORS)):
+   x0=390+k*385;y0=440+math.sin(k*1.8+t*.3)*45
+   d.line((W*.52,230,x0,y0),fill=tuple(int(v*.45*fade) for v in c),width=2)
+   for j in range(28):
+    xx=x0-100+j*7;yy=y0+60+math.sin(j*.8-t*(3 if k==0 else .3))*(24 if k==0 else 3)
+    d.ellipse((xx-2,yy-2,xx+2,yy+2),fill=c)
+   d.ellipse((x0-23,y0-23,x0+23,y0+23),outline=c,width=2)
+   label(im,(x0,y0+115),name,29,c,anchor='mm',bold=True)
+ # Three separate evidence lanes make the protection logic visible.
+ if idx>=4 and idx<6:
+  for lane,(name,c) in enumerate(zip(['重要数据 · 保护','工具运行中 · 保留','核验通过 · 候选'],[BLUE,AMBER,MINT])):
+   pp,_,_=projection([[(-750,0,750)[lane],-355,160]],t);a,b=pp[0]
+   label(im,(a,b),name,28,c,anchor='mm',bold=True)
+  if idx==5:
+   px,py=projection([[1050,200,150]],t)[0][0]
+   d.ellipse((px-85,py-50,px+85,py+50),outline=MINT,width=3)
+   d.arc((px-85,py-90,px+85,py+10),180,360,fill=MINT,width=3)
+   label(im,(px,py+105),'系统垃圾桶',24,MINT,anchor='mm')
+ # Actual app UI emerges through the lens; preserve app labels and preview disclosure.
+ shot_name={1:'overview',2:'processes',3:'adoption',4:'storage',5:'cleanup'}.get(idx)
+ show=0
+ if shot_name:
+  show=interval(p,.30,.42)*(1-interval(p,.64,.77))
+ if show>.001:
+  sw=round((1040+120*show)/8)*8;shot=resized_shot(shot_name,sw,round(max(0,local-s['duration']*.3)*12))
+  sh=min(760,shot.height);shot=shot.crop((0,0,sw,sh));sx=round(W*.5-sw*.5);sy=round(330-70*show)
+  overlay=Image.new('RGBA',(W,H));mask=Image.new('L',(sw,sh));ImageDraw.Draw(mask).rounded_rectangle((0,0,sw-1,sh-1),15,fill=int(show*255))
+  shadow=Image.new('RGBA',(W,H));ImageDraw.Draw(shadow).rounded_rectangle((sx-12,sy-8,sx+sw+12,sy+sh+15),24,fill=(0,0,0,180));im=Image.alpha_composite(im.convert('RGBA'),shadow.filter(ImageFilter.GaussianBlur(22))).convert('RGB')
+  im.paste(shot,(sx,sy),mask);d=ImageDraw.Draw(im)
+  d.rounded_rectangle((sx,sy,sx+sw,sy+sh),15,outline=tuple(int(v*.65) for v in MINT),width=1)
+  label(im,(sx,sy-34),'真实界面 · 预览数据演示',18,(126,173,177))
+ # Sparse words, no chapter cards. Their appearance follows physical events.
+ if idx<6:
+  alpha=interval(local,0,.7)*(1-interval(p,.85,1))
+  label(im,(100,132),s['title'],62,tuple(int(v*alpha) for v in WHITE),bold=True)
+  if idx==0:label(im,(105,219),'WHO IS STILL HERE?',20,(119,160,170))
+ else:
+  fade=interval(local,0,1.4)
+  shade=Image.new('RGB',(W,H),(3,10,16));im=Image.blend(im,shade,.72*fade)
+  rr=108;cx,cy=960,380;d=ImageDraw.Draw(im)
+  for k in range(3):d.arc((cx-rr-k*8,cy-rr-k*8,cx+rr+k*8,cy+rr+k*8),t*20+k*40,t*20+260+k*40,fill=MINT,width=3 if k==0 else 1)
+  d.line((1036,456,1086,506),fill=MINT,width=8)
+  label(im,(960,565),'AgentLens',98,WHITE,anchor='mm',bold=True)
+  label(im,(960,666),'让 AI 开发的资源消耗，清晰可见。',38,MINT,anchor='mm')
+  label(im,(960,741),'Your agents, in focus.',25,(134,174,182),anchor='mm')
+  label(im,(960,821),'github.com/bubugx/agentLens',23,(158,185,193),anchor='mm')
+ # The same small optical mark stays on screen throughout the journey.
+ d=ImageDraw.Draw(im);d.ellipse((100,54,121,75),outline=MINT,width=2);d.line((118,72,127,81),fill=MINT,width=2)
+ label(im,(143,49),'AgentLens',23,WHITE,bold=True)
+ label(im,(1820,55),'LOCAL / IN FOCUS',17,(99,146,153),anchor='ra')
+ for c in CAP:
+  if c['start']<=t<c['end']:
+   txt=c['text'];tw=d.textlength(txt,font=font(32));d.rounded_rectangle((W/2-tw/2-24,976,W/2+tw/2+24,1036),14,fill=(3,10,16));label(im,(960,1007),txt,32,WHITE,anchor='mm');break
+ d.line((100,1056,1820,1056),fill=(24,48,57),width=2)
+ d.line((100,1056,100+1720*min(1,t/DURATION),1056),fill=MINT,width=2)
  return im
-
-def header(im,s,p,idx):
- y=int(184+28*(1-ease(p/.75)))
- text(im,(94,y-42),s['chapter'],22,CYAN,'cn',1)
- if s['id'] not in ['intro','outro']:
-  text(im,(90,y+22),s['title'],64,WHITE,weight=1)
- text(im,(94,930),f'{idx+1:02} / 09',20,MUTED,'mono')
- text(im,(1840,930),'AGENTLENS  •  v0.1.0',17,MUTED,'mono',anchor='ra')
-
-def screenshot(im,name,p,box=(708,218,1832,872)):
- x0,y0,x1,y1=box;w=int(x1-x0);h=int(y1-y0)
- shot=SHOTS[name];zoom=1.0+.035*smooth(p/8)
- sw=int(w*zoom);sh=int(sw*shot.height/shot.width)
- resized=shot.resize((sw,sh),Image.Resampling.BICUBIC)
- cut=resized.crop((int((sw-w)/2),int(max(0,sh-h)*.20),int((sw+w)/2),int(max(0,sh-h)*.20)+h))
- mask=Image.new('L',(w,h));ImageDraw.Draw(mask).rounded_rectangle((0,0,w-1,h-1),18,fill=255)
- # Soft shadow, slight vertical float and a crisp glass frame.
- yy=int(y0+22*(1-ease(p/.8))+3*math.sin(p*.55))
- panel(im,(x0-10,yy-10,x1+10,yy+h+10),(0,0,0,130),(42,81,95,255),26)
- im.paste(cut,(x0,yy),mask)
- pill(im,x1-225,yy+18,'实际界面 · 示例数据',CYAN,17)
- # Moving line around a small portion of the perimeter.
- d=ImageDraw.Draw(im);v=(p*.08)%1
- d.line((x0+30,yy-10,x0+30+(w-60)*v,yy-10),fill=CYAN,width=2)
-
-def bullet(im,x,y,n,title,desc,active=1):
- color=CYAN if active else MUTED
- circle(im,(x+18,y+24),18,color,1);text(im,(x+18,y+22),str(n),18,color,'mono',anchor='mm')
- text(im,(x+54,y),title,30,WHITE,weight=1);text(im,(x+54,y+48),desc,22,MUTED)
-
-def lens(im,c,r,p):
- d=ImageDraw.Draw(im)
- for j in range(4):
-  rr=r+j*30;circle(im,c,rr,(24+j*5,65+j*6,76+j*6),1)
-  start=(p*16+j*73)%360
-  d.arc((c[0]-rr,c[1]-rr,c[0]+rr,c[1]+rr),start,start+48,fill=CYAN if j%2==0 else (70,131,150),width=3)
- for a in range(0,360,6):
-  q=math.radians(a);rr=r+109
-  line(im,[(c[0]+rr*math.cos(q),c[1]+rr*math.sin(q)),(c[0]+(rr+7 if a%30 else rr+15)*math.cos(q),c[1]+(rr+7 if a%30 else rr+15)*math.sin(q))],(45,82,94),1)
- icon=ICON.resize((int(r*1.3),int(r*1.3)),Image.Resampling.LANCZOS)
- im.alpha_composite(icon,(int(c[0]-icon.width/2),int(c[1]-icon.height/2)))
-
-def render_scene(idx,t):
- s=scenes[idx];p=t-s['start'];im=background(t);header(im,s,p,idx);d=ImageDraw.Draw(im);sid=s['id']
- if sid=='problem':
-  text(im,(96,445),'你的 AI 开发环境，正在变重。',30,MUTED)
-  for j,(lab,val,col) in enumerate([('STORAGE / 磁盘','缓存与会话',CYAN),('MEMORY / 内存','Agent 与子进程',(146,171,250)),('BACKGROUND / 后台','任务结束之后',AMBER)]):
-   yy=int(230+j*205+30*(1-ease((p-j*.14)/.8)))
-   panel(im,(805,yy,1795,yy+175));text(im,(839,yy+25),lab,20,col,'mono');text(im,(839,yy+65),val,36,WHITE,weight=1)
-   vals=[.25+.04*k+.11*math.sin(k*.7+j) for k in range(28)]
-   pts=[(1270+k*16,yy+130-v*70-8*math.sin(p*.5+k*.15)) for k,v in enumerate(vals)]
-   line(im,pts,col,3);circle(im,pts[-1],5,col,1,col)
-  for j,lab in enumerate(['谁在占用？','从哪里来？','能否清理？']):pill(im,96,575+j*66,lab,CYAN if j==int(p/2.2)%3 else MUTED,26)
- elif sid=='intro':
-  text(im,(92,266),'AgentLens',104,WHITE,'en',1);text(im,(96,402),'AI Agent 资源监测与清理工作台',36,WHITE,weight=1)
-  text(im,(96,467),'YOUR AGENTS, IN FOCUS.',25,CYAN,'mono');text(im,(96,545),'本地运行  /  有据可查  /  操作可复核',27,MUTED)
-  lens(im,(1390,505),148,p)
-  labels=['Codex','Claude Code','Cursor','Gemini CLI','OpenCode','Aider']
-  for j,lab in enumerate(labels):
-   a=j*math.pi/3-.7+p*.025;x=1390+325*math.cos(a);y=505+306*math.sin(a)
-   ww=ImageDraw.Draw(im).textlength(lab,font=font(23,'en'))+44
-   panel(im,(x-ww/2,y-25,x+ww/2,y+25),(13,33,45,255),(61,110,120,255),12);text(im,(x,y),lab,23,WHITE,'en',anchor='mm')
-  pill(im,96,659,'6 类工具识别',CYAN,24)
- elif sid=='overview':
-  for j,(a,b) in enumerate([('占用总览','磁盘 · RSS · CPU'),('变化趋势','持续增长，及时检查'),('后台速览','开发时也能掌握变化')]):bullet(im,96,475+j*115,j+1,a,b)
-  screenshot(im,'overview',p)
- elif sid=='trace':
-  for j,(a,b) in enumerate([('自动发现项目','路径、标记与会话 cwd'),('沿线索逐层下钻','工具 → 项目 → 目录 → 文件'),('显示判断原因','保留什么，候选是什么')]):bullet(im,96,475+j*115,j+1,a,b)
-  screenshot(im,'storage',p)
- elif sid=='process':
-  for j,(a,b) in enumerate([('先理解用途','Agent / MCP / 开发 / 构建'),('检查身份与影响','父进程、工作目录、资源变化'),('确认后请求停止','执行前核对 PID + 启动时间')]):bullet(im,96,475+j*115,j+1,a,b)
-  screenshot(im,'process-detail',p)
- elif sid=='architecture':
-  text(im,(1010,248),'LOCAL DATA PIPELINE',25,CYAN,'mono')
-  labels=[('Vue 3','交互与可视化','UI / TypeScript'),('Tauri 2','连接桌面能力','IPC / WebView'),('Rust','目录扫描与资源采样','sysinfo / notify'),('SQLite','本地索引与历史','WAL / journal')]
-  for j,(name,desc,sub) in enumerate(labels):
-   xx=96+j*440;yy=490+int(30*(1-ease((p-j*.15)/.8)))
-   panel(im,(xx,yy,xx+398,yy+245),(12,29,42,250),(47,99,110,255),24)
-   text(im,(xx+28,yy+22),f'0{j+1}',22,CYAN,'mono');text(im,(xx+28,yy+65),name,52,WHITE,'en');text(im,(xx+28,yy+141),desc,26,WHITE);text(im,(xx+28,yy+194),sub,20,MUTED,'mono')
-   if j<3:
-    line(im,[(xx+400,yy+120),(xx+436,yy+120)],(51,109,121),2)
-    dot=xx+400+36*((p*.7-j*.2)%1);circle(im,(dot,yy+120),4,CYAN,1,CYAN)
-  pill(im,96,790,'文件事件 + 周期复核',CYAN,25);pill(im,515,790,'扫描 / 采样独立运行',CYAN,25);pill(im,965,790,'数据保存在本机',CYAN,25)
- elif sid=='cleanup':
-  steps=['保留期与规则','稳定观测 + 未运行','用户确认 + 身份复核','移入系统垃圾桶']
-  for j,lab in enumerate(steps):
-   yy=465+j*78;active=p>(j*.65)
-   circle(im,(118,yy+20),16,CYAN if active else MUTED,2)
-   if active:line(im,[(111,yy+20),(116,yy+25),(125,yy+14)],CYAN,2)
-   text(im,(158,yy-2),lab,28,WHITE if active else MUTED)
-   if j<3:line(im,[(118,yy+38),(118,yy+61)],(45,86,98),2)
-  screenshot(im,'cleanup',p,(708,218,1832,785))
-  panel(im,(708,816,1832,892),(16,35,45,255),(72,114,121,255),15)
-  text(im,(735,837),'清空系统垃圾桶后，才真正释放磁盘空间。',28,CYAN,weight=1)
- elif sid=='privacy':
-  lens(im,(1380,480),130,p)
-  text(im,(1380,756),'ON YOUR DEVICE',22,CYAN,'mono',anchor='mm')
-  for j,(title,desc) in enumerate([('无需账号','没有监测数据上传'),('有限元数据','不保存提示词和对话'),('有依据的管理','资源可见 · 来源可查 · 操作可复核')]):bullet(im,96,475+j*115,j+1,title,desc)
- elif sid=='outro':
-  icon=ICON.resize((150,150),Image.Resampling.LANCZOS);im.alpha_composite(icon,(93,230))
-  text(im,(282,231),'AgentLens',112,WHITE,'en',1)
-  text(im,(94,456),s['title'],78,WHITE,weight=1)
-  text(im,(100,687),'YOUR AGENTS, IN FOCUS.',28,CYAN,'mono')
-  lens(im,(1485,510),130,p)
-  panel(im,(96,775,945,852),(10,28,39,255),(40,87,99,255),14)
-  text(im,(121,797),'$ npm ci   &&   npm run desktop',26,CYAN,'mono')
- # Caption bar is kept separate from the interface and typography safe area.
- subtitle=next((c['text'] for c in captions if c['start']<=t<c['end']),None)
- if subtitle:
-  tw=d.textlength(subtitle,font=font(31));bw=tw+70
-  panel(im,((W-bw)/2,974,(W+bw)/2,1042),(2,8,15,238),(39,65,78,255),14)
-  text(im,(W/2,1006),subtitle,31,WHITE,anchor='mm')
- # A permanent disclosure prevents demo numbers from being presented as measurements.
- if sid in ['overview','trace','process','cleanup']:
-  text(im,(1840,900),'界面数值为演示数据，不代表实测清理收益',18,MUTED,anchor='ra')
- line(im,[(0,H-3),(int(W*t/DURATION),H-3)],CYAN,3)
- return im
-
-def frame(t):
- idx=next((i for i,s in enumerate(scenes) if s['start']<=t<s['start']+s['duration']),len(scenes)-1)
- im=render_scene(idx,t)
- # Fast cross dissolve, with a restrained scan streak through the cut.
- elapsed=t-scenes[idx]['start']
- if idx and elapsed<.27:
-  prev=render_scene(idx-1,scenes[idx]['start']-.001)
-  im=Image.blend(prev,im,smooth(elapsed/.27))
-  xx=int(W*elapsed/.27);line(im,[(xx,115),(xx,912)],(61,134,142,140),2)
- fade=min(1,t/.35,(DURATION-t)/.5)
- if fade<1:im=Image.blend(Image.new('RGBA',(W,H),(5,11,21,255)),im,max(0,fade))
- return im.convert('RGB')
 
 def audio():
- sr=48000;n=round(DURATION*sr);voice=np.zeros(n,np.float32)
+ sr=48000;n=math.ceil(DURATION*sr);mix=np.zeros((n,2),np.float32)
  for s in scenes:
-  raw=subprocess.check_output([FFMPEG,'-v','error','-i',str(ASSETS/f"voice-{s['id']}.mp3"),'-f','f32le','-ar',str(sr),'-ac','1','-'])
-  samples=np.frombuffer(raw,np.float32).copy();peak=max(.01,np.max(np.abs(samples)));samples*=.79/peak
-  start=round(s['voiceStart']*sr);length=min(len(samples),n-start);voice[start:start+length]+=samples[:length]
- ts=np.arange(n,dtype=np.float32)/sr;music=np.zeros(n,np.float32)
- # Original procedural soundtrack: sparse synth pad, arpeggio and low pulse.
- for k,f in enumerate([130.8128,195.9977,261.6256,293.6648]):
-  music+=(.0065*np.sin(2*np.pi*f*ts+.15*np.sin(ts*.4+k))+.003*np.sin(2*np.pi*(f*1.002)*ts))*(.75+.25*np.sin(ts*.35+k))
- rng=np.random.default_rng(27)
- for beat in np.arange(0,DURATION,.51724):
-  st=int(beat*sr);ln=min(int(.27*sr),n-st);tt=np.arange(ln)/sr
-  music[st:st+ln]+=.022*np.sin(2*np.pi*(53*tt+4*(1-np.exp(-tt*25))))*np.exp(-tt*20)
- for k,beat in enumerate(np.arange(.26,DURATION,.25862)):
-  st=int(beat*sr);ln=min(int(.23*sr),n-st);tt=np.arange(ln)/sr;f=[523.251,783.991,1046.502,587.33,659.255,783.991,1174.66,1046.5][k%8]
-  music[st:st+ln]+=.008*np.sin(2*np.pi*f*tt)*np.exp(-tt*23)*(1-np.exp(-tt*200))
- for s in scenes[1:]:
-  st=int(max(0,s['start']-.12)*sr);ln=min(int(.43*sr),n-st);tt=np.arange(ln)/sr
-  noise=rng.standard_normal(ln).astype(np.float32);noise=np.convolve(noise,np.ones(8)/8,mode='same')
-  music[st:st+ln]+=.026*noise*np.sin(np.pi*np.minimum(1,tt/.43))**2
- # Lower the synth bed further during speech; leave clear gaps at cuts.
- envelope=np.convolve(np.abs(voice[::480]),np.ones(8)/8,mode='same')
- duck=np.interp(np.arange(n),np.arange(len(envelope))*480,np.clip(1-envelope*5,.42,1))
- music*=duck*np.minimum(1,ts/1.5)*np.minimum(1,(DURATION-ts)/1.5)
- left=voice+music;right=voice+.96*music
- stereo=np.stack([left,right],axis=1);stereo=np.clip(stereo,-.98,.98)
- path=OUT/'agentlens-mix.wav'
- with wave.open(str(path),'wb') as w:w.setnchannels(2);w.setsampwidth(2);w.setframerate(sr);w.writeframes((stereo*32767).astype('<i2').tobytes())
+  out=ASSETS/f"voice-{s['id']}.wav"
+  subprocess.run([FFMPEG,'-y','-v','error','-i',str(ASSETS/f"voice-{s['id']}.mp3"),'-ar',str(sr),'-ac','1',str(out)],check=True)
+  with wave.open(str(out)) as f:a=np.frombuffer(f.readframes(f.getnframes()),'<i2').astype(np.float32)/32768
+  start=round(s['voiceStart']*sr);end=min(n,start+len(a));mix[start:end,:]+=a[:end-start,None]*.94
+ # Soft original electronic score: pulse, sub, glass harmonics; no external music assets.
+ time=np.arange(n)/sr;music=np.zeros(n)
+ for f in [55,82.4069,110,164.8138]:music+=.007*np.sin(2*np.pi*f*time+np.sin(time*.17))
+ beat=time%(60/112);music+=.024*np.exp(-beat*18)*np.sin(2*np.pi*(56*time+7*(1-np.exp(-beat*13))))
+ for i,f in enumerate([440,659.25,880,987.77]):
+  env=np.exp(-((time-i*.134)%2.14)*6);music+=.009*env*np.sin(2*np.pi*f*time)
+ fade=np.minimum(1,time/2)*np.minimum(1,(DURATION-time)/2);music*=fade
+ mix[:,0]+=music;mix[:,1]+=np.roll(music,450)
+ peak=float(np.abs(mix).max());mix*=min(1,.92/max(peak,.001))
+ path=ASSETS/'mix.wav'
+ with wave.open(str(path),'wb') as f:f.setnchannels(2);f.setsampwidth(2);f.setframerate(sr);f.writeframes((np.clip(mix,-1,1)*32767).astype('<i2').tobytes())
  return path
 
-def contact():
- sheet=Image.new('RGB',(1440,810),(5,11,21))
- for i,s in enumerate(scenes):
-  im=frame(s['start']+min(3.0,s['duration']*.52));im.thumbnail((480,270));sheet.paste(im,((i%3)*480,(i//3)*270))
- sheet.save(OUT/'agentlens-contact-sheet.jpg',quality=92)
- frame(scenes[1]['start']+3).save(OUT/'agentlens-poster.jpg',quality=95)
- for name in ['overview','architecture','cleanup']:
-  s=next(s for s in scenes if s['id']==name);frame(s['start']+3).save(OUT/f'frame-{name}.jpg',quality=95)
+def normalize_audio(target):
+ log=subprocess.run([FFMPEG,'-hide_banner','-i',str(target),'-vn','-af','loudnorm=I=-16:TP=-1.5:LRA=7:print_format=json','-f','null','-'],capture_output=True,text=True,check=True).stderr
+ m=json.loads(log[log.rfind('{'):log.rfind('}')+1])
+ settings=f"loudnorm=I=-16:TP=-1.5:LRA=7:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
+ temp=target.with_name(target.stem+'.normalized.mp4')
+ subprocess.run([FFMPEG,'-y','-v','warning','-i',str(target),'-c:v','copy','-af',settings,'-ar','48000','-c:a','aac','-b:a','192k','-movflags','+faststart',str(temp)],check=True)
+ temp.replace(target)
 
-if __name__=='__main__':
- ap=argparse.ArgumentParser();ap.add_argument('--preview',action='store_true');args=ap.parse_args()
- contact()
- metadata={'duration':DURATION,'width':W,'height':H,'fps':FPS,'voice':SPEC['voice'],'voiceRate':SPEC['rate'],'chapters':[{'id':s['id'],'start':s['start'],'duration':s['duration']} for s in scenes],'subtitles':len(captions)}
- (OUT/'video-metadata.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
- print(json.dumps(metadata,ensure_ascii=False),flush=True)
- if not args.preview:
-  wav=audio();temp=OUT/'agentlens-picture.mp4';total=round(DURATION*FPS)
-  cmd=[FFMPEG,'-y','-v','warning','-f','rawvideo','-vcodec','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','-','-an','-c:v','libx264','-preset','fast','-crf','19','-pix_fmt','yuv420p','-movflags','+faststart',str(temp)]
-  proc=subprocess.Popen(cmd,stdin=subprocess.PIPE)
-  try:
-   for k in range(total):
-    proc.stdin.write(frame(k/FPS).tobytes())
-    if k%(FPS*5)==0:print(f'Render {k//FPS}s / {DURATION:.2f}s',flush=True)
-  finally:proc.stdin.close()
-  assert proc.wait()==0,'Video encoder failed'
-  output=OUT/'agentlens-intro-zh.mp4'
-  subprocess.run([FFMPEG,'-y','-v','warning','-i',str(temp),'-i',str(wav),'-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','192k','-t',str(DURATION),'-movflags','+faststart',str(output)],check=True)
-  temp.unlink();wav.unlink()
-  print(f'FINISHED: {output} ({output.stat().st_size/1e6:.1f} MB)',flush=True)
+def main():
+ parser=argparse.ArgumentParser();parser.add_argument('--preview',action='store_true');args=parser.parse_args()
+ times=[s['start']+s['duration']*(.2 if i in [2,4,5] else .5) for i,s in enumerate(scenes)]
+ thumbs=[]
+ for i,t in enumerate(times):
+  im=render(t);im.save(OUT/f"frame-{scenes[i]['id']}.jpg",quality=93);thumbs.append(im.resize((640,360)))
+ sheet=Image.new('RGB',(1280,360*4),(3,10,16))
+ for i,im in enumerate(thumbs):sheet.paste(im,((i%2)*640,(i//2)*360))
+ sheet.save(OUT/'agentlens-contact-sheet.jpg',quality=92)
+ render(scenes[-1]['start']+2).save(OUT/'agentlens-poster.jpg',quality=94)
+ if args.preview:print(f'Preview: {DURATION:.2f}s');return
+ track=audio();target=OUT/'agentlens-intro-zh.mp4'
+ proc=subprocess.Popen([FFMPEG,'-y','-v','warning','-f','rawvideo','-vcodec','rawvideo','-s',f'{W}x{H}','-pix_fmt','rgb24','-r',str(FPS),'-i','-','-i',str(track),'-c:v','libx264','-preset','fast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-t',str(DURATION),'-movflags','+faststart',str(target)],stdin=subprocess.PIPE)
+ for i in range(round(DURATION*FPS)):
+  proc.stdin.write(render(i/FPS).tobytes())
+  if i%(FPS*5)==0:print(f'Render {i/FPS:.0f}/{DURATION:.1f}s',flush=True)
+ proc.stdin.close();assert proc.wait()==0
+ normalize_audio(target)
+ metadata=dict(title=SPEC['title'],concept=SPEC['concept'],duration=DURATION,width=W,height=H,fps=FPS,voice=SPEC['voice'],rate=SPEC['rate'],narrationSeconds=round(sum(s['voiceDuration'] for s in scenes),3),scenes=scenes,captions=len(CAP))
+ (OUT/'video-metadata.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n');print(target,flush=True)
+if __name__=='__main__':main()

@@ -1,7 +1,6 @@
 import { AGENT_META, type Activity, type HistoryPoint } from "./types";
 import { t } from "./i18n";
-export type ActivityFilter =
-  "all" | "storage" | "cleanup" | "process" | "discovery";
+export type ActivityFilter = "all" | "storage" | "cleanup" | "process" | "discovery";
 export function activityKind(event: Activity): ActivityFilter {
   return ["growth", "decrease"].includes(event.kind)
     ? "storage"
@@ -9,11 +8,7 @@ export function activityKind(event: Activity): ActivityFilter {
       ? (event.kind as ActivityFilter)
       : "all";
 }
-export function matchesActivity(
-  event: Activity,
-  filter: ActivityFilter,
-  query: string,
-) {
+export function matchesActivity(event: Activity, filter: ActivityFilter, query: string) {
   return (
     (filter === "all" || activityKind(event) === filter) &&
     `${event.title} ${t(event.title)} ${event.detail} ${event.agent} ${AGENT_META[event.agent]?.name || ""} ${event.context?.paths.join(" ") || ""}`
@@ -25,11 +20,7 @@ export function activityCount(event: Activity): number {
   if (event.context) return event.context.count;
   if (event.kind === "discovery") return Number(event.detail) || 0;
   if (event.kind === "cleanup")
-    return (
-      Number(
-        event.title.match(/^(\d+) (?:files moved|sample files cleaned)/)?.[1],
-      ) || 0
-    );
+    return Number(event.title.match(/^(\d+) (?:files moved|sample files cleaned)/)?.[1]) || 0;
   return event.kind === "process" ? 1 : 0;
 }
 export function activityAction(event: Activity): string {
@@ -53,9 +44,7 @@ export function storageSeries(
   events: Activity[],
 ) {
   // At most one predecessor establishes the range baseline. Use actual timestamps, never index spacing.
-  const ordered = [...history]
-    .filter((p) => p.time <= end)
-    .sort((a, b) => a.time - b.time);
+  const ordered = [...history].filter((p) => p.time <= end).sort((a, b) => a.time - b.time);
   const previous = ordered.filter((p) => p.time < start).at(-1);
   const points = ordered.filter((p) => p.time >= start);
   if (previous) points.unshift({ ...previous, time: start });
@@ -66,9 +55,7 @@ export function storageSeries(
     };
   // Historical observations can establish a net-change curve, never a total usage estimate.
   const changes = events
-    .filter(
-      (e) => activityKind(e) === "storage" && e.time >= start && e.time <= end,
-    )
+    .filter((e) => activityKind(e) === "storage" && e.time >= start && e.time <= end)
     .sort((a, b) => a.time - b.time);
   let value = 0;
   const fallback = [{ time: start, value }];

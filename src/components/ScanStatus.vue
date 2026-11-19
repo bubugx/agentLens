@@ -24,11 +24,7 @@ const lastChangeAt = ref(clock.value);
 const timer = window.setInterval(() => (clock.value = performance.now()), 1000);
 onBeforeUnmount(() => window.clearInterval(timer));
 watch(
-  [
-    () => progress.value.phase,
-    () => progress.value.elapsedMs,
-    () => props.data.scanning,
-  ],
+  [() => progress.value.phase, () => progress.value.elapsedMs, () => props.data.scanning],
   () => (receivedAt.value = performance.now()),
 );
 watch(
@@ -54,9 +50,7 @@ const waitingForAccess = computed(
     ["discovery", "indexing"].includes(progress.value.phase) &&
     clock.value - lastChangeAt.value >= 8000,
 );
-const partial = computed(
-  () => progress.value.phase === "complete" && !props.data.scanComplete,
-);
+const partial = computed(() => progress.value.phase === "complete" && !props.data.scanComplete);
 const visible = computed(
   () =>
     !dismissed.value &&
@@ -104,12 +98,7 @@ const percent = computed(() =>
   progress.value.rootsTotal
     ? Math.max(
         0,
-        Math.min(
-          100,
-          Math.round(
-            (progress.value.rootsDone / progress.value.rootsTotal) * 100,
-          ),
-        ),
+        Math.min(100, Math.round((progress.value.rootsDone / progress.value.rootsTotal) * 100)),
       )
     : 0,
 );
@@ -120,28 +109,38 @@ const determinate = computed(
 <template>
   <section
     v-if="visible"
-    :class="[
-      'scan-status',
-      { complete: progress.phase === 'complete', scanning: data.scanning },
-    ]"
+    :class="['scan-status', { complete: progress.phase === 'complete', scanning: data.scanning }]"
     :data-phase="progress.phase"
     :aria-busy="data.scanning"
   >
     <div class="scan-status-icon">
-      <CheckCheck v-if="progress.phase === 'complete'" :size="21" /><Pause
+      <CheckCheck
+        v-if="progress.phase === 'complete'"
+        :size="21"
+      />
+      <Pause
         v-else-if="progress.phase === 'paused'"
         :size="19"
       />
-      <TriangleAlert v-else-if="progress.phase === 'error'" :size="20" />
+      <TriangleAlert
+        v-else-if="progress.phase === 'error'"
+        :size="20"
+      />
       <FolderSearch
         v-else-if="progress.phase !== 'saving'"
         :size="21"
-      /><LoaderCircle v-else :size="21" :class="{ spin: data.scanning }" />
+      />
+      <LoaderCircle
+        v-else
+        :size="21"
+        :class="{ spin: data.scanning }"
+      />
     </div>
     <div class="scan-status-main">
       <div class="scan-status-heading">
-        <strong>{{ title }}</strong><span>{{ phase }}</span
-        ><small>{{ t("{0}s elapsed", elapsedSeconds) }}</small>
+        <strong>{{ title }}</strong>
+        <span>{{ phase }}</span>
+        <small>{{ t("{0}s elapsed", elapsedSeconds) }}</small>
       </div>
       <div
         v-if="data.scanning"
@@ -159,24 +158,15 @@ const determinate = computed(
         />
       </div>
       <div class="scan-status-stats">
-        <span>{{
-          t("{0} directories checked", progress.directories.toLocaleString())
-        }}</span><span>{{
-          t("{0} files indexed", progress.files.toLocaleString())
-        }}</span
-        ><span>{{ bytes(progress.bytes) }}</span
-        ><span v-if="progress.projects">{{
-          t("{0} projects found", progress.projects)
-        }}</span
-        ><span v-if="progress.rootsTotal">{{
-          t("{0}/{1} roots finished", progress.rootsDone, progress.rootsTotal)
-        }}</span
-        ><span v-if="progress.workers">{{
-          t("{0} parallel workers", progress.workers)
-        }}</span
-        ><span v-if="progress.errors">{{
-          t("{0} access issues", progress.errors)
-        }}</span>
+        <span>{{ t("{0} directories checked", progress.directories.toLocaleString()) }}</span>
+        <span>{{ t("{0} files indexed", progress.files.toLocaleString()) }}</span>
+        <span>{{ bytes(progress.bytes) }}</span>
+        <span v-if="progress.projects">{{ t("{0} projects found", progress.projects) }}</span>
+        <span v-if="progress.rootsTotal">
+          {{ t("{0}/{1} roots finished", progress.rootsDone, progress.rootsTotal) }}
+        </span>
+        <span v-if="progress.workers">{{ t("{0} parallel workers", progress.workers) }}</span>
+        <span v-if="progress.errors">{{ t("{0} access issues", progress.errors) }}</span>
       </div>
       <p
         v-if="data.scanning && progress.currentPath"
@@ -185,14 +175,21 @@ const determinate = computed(
       >
         {{ compactPath(progress.currentPath) }}
       </p>
-      <p v-if="waitingForAccess" class="scan-history-note" role="status">
+      <p
+        v-if="waitingForAccess"
+        class="scan-history-note"
+        role="status"
+      >
         {{
           t(
             "This directory is taking longer to access. If your system asks for folder access, choose whether to allow it. Denied folders will be skipped.",
           )
         }}
       </p>
-      <p v-if="progress.initial" class="scan-history-note">
+      <p
+        v-if="progress.initial"
+        class="scan-history-note"
+      >
         {{
           t(
             "Existing agent files become your storage baseline. Memory and CPU history starts with live observations.",
@@ -206,20 +203,26 @@ const determinate = computed(
         class="button secondary small"
         @click="$emit('toggle')"
       >
-        <Pause :size="13" />{{ t("Pause") }}</button
-      ><button
+        <Pause :size="13" />
+        {{ t("Pause") }}
+      </button>
+      <button
         v-else-if="progress.phase === 'paused' && !data.monitoring"
         class="button secondary small"
         @click="$emit('toggle')"
       >
-        <Play :size="13" />{{ t("Resume") }}</button
-      ><button
+        <Play :size="13" />
+        {{ t("Resume") }}
+      </button>
+      <button
         v-else-if="progress.phase === 'error' || progress.phase === 'paused'"
         class="button secondary small"
         @click="$emit('rescan')"
       >
-        <RotateCw :size="13" />{{ t("Try again") }}</button
-      ><button
+        <RotateCw :size="13" />
+        {{ t("Try again") }}
+      </button>
+      <button
         v-if="!data.scanning"
         class="icon-button"
         :aria-label="t('Dismiss scan status')"
@@ -234,11 +237,7 @@ const determinate = computed(
 <style scoped>
 .scan-status {
   background:
-    linear-gradient(
-      110deg,
-      color-mix(in srgb, var(--accent) 4%, transparent),
-      transparent 60%
-    ),
+    linear-gradient(110deg, color-mix(in srgb, var(--accent) 4%, transparent), transparent 60%),
     var(--surface);
 }
 .scan-status-icon {

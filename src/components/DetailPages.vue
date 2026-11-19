@@ -3,8 +3,7 @@ import { t, categoryLabel } from "../lib/i18n";
 import AgentRegistry from "./AgentRegistry.vue";
 import UiTabs from "./UiTabs.vue";
 import ProcessAnalytics from "./ProcessAnalytics.vue";
-import ProcessTriage from "./ProcessTriage.vue";
-import { assessmentCategory } from "../lib/processes";
+import { assessmentCategory, assessmentLabel, processCategories } from "../lib/processes";
 import AgentStorageBreakdown from "./AgentStorageBreakdown.vue";
 import UiSelect from "./UiSelect.vue";
 import ContextHelp from "./ContextHelp.vue";
@@ -14,7 +13,7 @@ import ThemeSettings from "./ThemeSettings.vue";
 import MonitoredDirectories from "./MonitoredDirectories.vue";
 import ActivityView from "./ActivityView.vue";
 import ProcessList from "./ProcessList.vue";
-import { computed, ref, nextTick } from "vue";
+import { computed, ref } from "vue";
 import {
   Plus,
   ScanSearch,
@@ -28,13 +27,7 @@ import {
   Terminal,
   TriangleAlert,
 } from "lucide-vue-next";
-import type {
-  FileEntry,
-  Page,
-  Process,
-  Settings,
-  Snapshot,
-} from "../lib/types";
+import type { FileEntry, Page, Process, Settings, Snapshot } from "../lib/types";
 import { AGENT_META, bytes, relativeTime } from "../lib/types";
 import AgentIcon from "./AgentIcon.vue";
 import AgentTable from "./AgentTable.vue";
@@ -48,6 +41,7 @@ const props = defineProps<{
   query: string;
   selected: Set<string>;
   preview: boolean;
+  processesRefreshing: boolean;
 }>();
 const emit = defineEmits<{
   agent: [id: string];
@@ -63,6 +57,7 @@ const emit = defineEmits<{
   settings: [settings: Settings];
   remove: [id: string];
   refresh: [];
+  refreshProcesses: [];
   fullRescan: [];
 }>();
 const rulesOpen = ref(false);
@@ -71,22 +66,17 @@ const category = ref("all"),
   sort = ref("size"),
   sessionSort = ref("recent"),
   processFilter = ref("all");
-const onlyOrphans = computed(() => processFilter.value === "review");
-async function reviewSuggestions() {
-  processFilter.value = "suggested";
-  await nextTick();
-  document
-    .querySelector(".process-results")
-    ?.scrollIntoView({ block: "start" });
-}
-const search = (s: string) =>
-  s.toLowerCase().includes(props.query.toLowerCase());
-const agents = computed(() =>
-  props.data.agents.filter((a) => search(`${a.name} ${a.id}`)),
-);
-const total = computed(() =>
-  props.data.agents.reduce((s, a) => s + a.storage, 0),
-);
+const processCategoryOptions = computed(() => [
+  { value: "all", label: t("All processes"), count: props.data.processes.length },
+  ...processCategories.map((category) => ({
+    value: category,
+    label: assessmentLabel(category),
+    count: props.data.processes.filter((p) => assessmentCategory(p) === category).length,
+  })),
+]);
+const search = (s: string) => s.toLowerCase().includes(props.query.toLowerCase());
+const agents = computed(() => props.data.agents.filter((a) => search(`${a.name} ${a.id}`)));
+const total = computed(() => props.data.agents.reduce((s, a) => s + a.storage, 0));
 const files = computed(() =>
   props.data.files
     .filter(
@@ -110,23 +100,13 @@ const sessions = computed(() =>
         (agent.value === "all" || s.agent === agent.value) &&
         search(`${s.id} ${s.project} ${s.agent}`),
     )
-    .sort((a, b) =>
-      sessionSort.value === "recent"
-        ? b.modified - a.modified
-        : b.size - a.size,
-    ),
+    .sort((a, b) => (sessionSort.value === "recent" ? b.modified - a.modified : b.size - a.size)),
 );
 const procs = computed(() =>
   props.data.processes.filter(
     (p) =>
-      (processFilter.value === "all" ||
-        (processFilter.value === "suggested"
-          ? assessmentCategory(p) === "suggested"
-          : p.recommendation === "review" ||
-            assessmentCategory(p) === "review")) &&
-      search(
-        `${p.name} ${p.agent} ${AGENT_META[p.agent]?.name || ""} ${p.pid}`,
-      ),
+      (processFilter.value === "all" || assessmentCategory(p) === processFilter.value) &&
+      search(`${p.name} ${p.agent} ${AGENT_META[p.agent]?.name || ""} ${p.pid}`),
   ),
 );
 const candidates = computed(() =>
@@ -140,9 +120,27 @@ const candidates = computed(() =>
 const selectedFiles = computed(() =>
   props.data.files.filter((f) => f.eligible && props.selected.has(f.id)),
 );
-const selectedBytes = computed(() =>
-  selectedFiles.value.reduce((s, f) => s + f.size, 0),
-);
+const selectedBytes = computed(() => selectedFiles.value.reduce((s, f) => s + f.size, 0));
+const cleanupEmptyReason = computed(() => {
+  if (props.query || category.value !== "all") return t("No cleanup candidates match this filter.");
+  const blocked = props.data.cleanupSummary.find((b) => b.code === "active");
+  if (blocked?.count)
+    return t(
+      "{0} older files ({1}) are retained while their Agent is running. They will be reassessed automatically when it exits.",
+      blocked.count.toLocaleString(),
+      bytes(blocked.bytes),
+    );
+  const pending = props.data.cleanupSummary.find((b) => b.code === "stability");
+  if (pending?.count)
+    return t(
+      "{0} files are awaiting a second stable observation. AgentLens will recheck them automatically.",
+      pending.count,
+    );
+  return t(
+    "Files are within retention or protected by your rules. No files currently qualify for cleanup.",
+  );
+});
+
 function toggle(f: FileEntry) {
   const n = new Set(props.selected);
   if (n.has(f.id)) n.delete(f.id);
@@ -162,12 +160,16 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
   props.data.agents.reduce((s, a) => s + a[key], 0);
 </script>
 <template>
-  <template v-if="page === 'Agents'"
-    ><PageHeading :title="t('Agents')"
-      ><button class="button primary" @click="emit('adopt')">
-        <Plus :size="16" />{{ t("Adopt Agent") }}
-      </button></PageHeading
-    >
+  <template v-if="page === 'Agents'">
+    <PageHeading :title="t('Agents')">
+      <button
+        class="button primary"
+        @click="emit('adopt')"
+      >
+        <Plus :size="16" />
+        {{ t("Adopt Agent") }}
+      </button>
+    </PageHeading>
     <AgentRegistry :data="data" />
     <section class="panel">
       <div class="section-heading">
@@ -178,19 +180,15 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
       <AgentTable
         :agents="agents.filter((a) => a.installed)"
         @select="emit('agent', $event)"
-      /><EmptyState
+      />
+      <EmptyState
         v-if="!agents.some((a) => a.installed)"
         :title="t('No matching agents')"
         :description="t('Try a different search or add a project directory.')"
       />
     </section>
     <section
-      v-if="
-        agents.some(
-          (a) =>
-            !a.installed && a.id !== 'unknown' && !a.id.startsWith('custom-'),
-        )
-      "
+      v-if="agents.some((a) => !a.installed && a.id !== 'unknown' && !a.id.startsWith('custom-'))"
       class="panel supported-panel"
     >
       <div class="section-heading">
@@ -201,33 +199,41 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
       <div class="supported-agents">
         <div
           v-for="a in agents.filter(
-            (a) =>
-              !a.installed && a.id !== 'unknown' && !a.id.startsWith('custom-'),
+            (a) => !a.installed && a.id !== 'unknown' && !a.id.startsWith('custom-'),
           )"
           :key="a.id"
         >
-          <AgentIcon :id="a.id" /><span
-            ><strong>{{ t(a.name) }}</strong></span
-          >
+          <AgentIcon :id="a.id" />
+          <span>
+            <strong>{{ t(a.name) }}</strong>
+          </span>
         </div>
       </div>
-    </section></template
-  >
-  <template v-else-if="page === 'Storage'"
-    ><PageHeading :title="t('Storage')"
-      ><button class="button primary" @click="emit('navigate', 'Cleanup')">
-        <ScanSearch :size="16" />{{ t("Review cleanup") }}</button
-      ><button class="button secondary" @click="emit('navigate', 'Settings')">
+    </section>
+  </template>
+  <template v-else-if="page === 'Storage'">
+    <PageHeading :title="t('Storage')">
+      <button
+        class="button primary"
+        @click="emit('navigate', 'Cleanup')"
+      >
+        <ScanSearch :size="16" />
+        {{ t("Review cleanup") }}
+      </button>
+      <button
+        class="button secondary"
+        @click="emit('navigate', 'Settings')"
+      >
         {{ t("Manage directories") }}
-      </button></PageHeading
-    >
+      </button>
+    </PageHeading>
     <div class="storage-summary panel">
       <div>
         <span class="small-label">{{ t("TOTAL AGENT FOOTPRINT") }}</span>
         <h2>{{ bytes(total) }}</h2>
         <p>
-          {{ data.fileCount.toLocaleString() }} {{ t("files across") }}
-          {{ data.roots.length }} {{ t("monitored directories") }}
+          {{ data.fileCount.toLocaleString() }} {{ t("files across") }} {{ data.roots.length }}
+          {{ t("monitored directories") }}
         </p>
       </div>
       <AgentStorageBreakdown
@@ -288,7 +294,8 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
                 .filter((a) => a.installed)
                 .map((a) => ({ value: a.id, label: t(a.name) })),
             ]"
-          /><UiSelect
+          />
+          <UiSelect
             v-model="sort"
             :label="t('Sort files')"
             :options="[
@@ -299,7 +306,10 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
           />
         </div>
       </div>
-      <div v-if="files.length" class="file-list">
+      <div
+        v-if="files.length"
+        class="file-list"
+      >
         <FileRow
           v-for="f in files.slice(0, 100)"
           :key="f.id"
@@ -311,35 +321,30 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
         v-else
         :title="t('No files here')"
         :description="
-          t(
-            'Try another category or search. Project source files are protected by default.',
-          )
+          t('Try another category or search. Project source files are protected by default.')
         "
       />
     </section>
   </template>
-  <template v-else-if="page === 'Sessions'"
-    ><PageHeading :title="t('Sessions')"
-      ><ContextHelp :label="t('Session data')"
-        ><p>
+  <template v-else-if="page === 'Sessions'">
+    <PageHeading :title="t('Sessions')">
+      <ContextHelp :label="t('Session data')">
+        <p>
           {{
             t(
               "Only session ID and working-directory metadata are retained. Prompts and conversations stay private.",
             )
           }}
-        </p></ContextHelp
-      ></PageHeading
-    >
+        </p>
+      </ContextHelp>
+    </PageHeading>
     <div class="page-toolbar">
       <UiTabs
         v-model="agent"
         class="filter-tabs"
         :label="t('Session Agents')"
         :options="
-          [
-            'all',
-            ...data.agents.filter((a) => a.installed).map((a) => a.id),
-          ].map((a) => ({
+          ['all', ...data.agents.filter((a) => a.installed).map((a) => a.id)].map((a) => ({
             value: a,
             label: a === 'all' ? t('All sessions') : AGENT_META[a]?.name || a,
           }))
@@ -364,7 +369,10 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
           </p>
         </div>
       </div>
-      <div v-if="sessions.length" class="table-wrap">
+      <div
+        v-if="sessions.length"
+        class="table-wrap"
+      >
         <table class="sessions-table">
           <thead>
             <tr>
@@ -377,38 +385,40 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in sessions" :key="s.path">
+            <tr
+              v-for="s in sessions"
+              :key="s.path"
+            >
               <td>
                 <div class="session-name">
                   <span class="session-symbol"><Terminal :size="16" /></span>
                   <div>
-                    <strong>{{
-                      s.project === "Unknown project"
-                        ? t(s.project)
-                        : s.project.split(/[\\/]/).pop()
-                    }}</strong><small :title="s.id"
-                      >{{ s.id.slice(0, 25)
-                      }}{{ s.id.length > 25 ? "…" : "" }}</small
-                    >
+                    <strong>
+                      {{
+                        s.project === "Unknown project"
+                          ? t(s.project)
+                          : s.project.split(/[\\/]/).pop()
+                      }}
+                    </strong>
+                    <small :title="s.id">
+                      {{ s.id.slice(0, 25) }}{{ s.id.length > 25 ? "…" : "" }}
+                    </small>
                   </div>
                 </div>
               </td>
               <td>
                 <div class="inline-agent">
-                  <AgentIcon :id="s.agent" small />{{
-                    AGENT_META[s.agent]?.name
-                  }}
+                  <AgentIcon
+                    :id="s.agent"
+                    small
+                  />
+                  {{ AGENT_META[s.agent]?.name }}
                 </div>
               </td>
               <td>
-                <Badge
-                  :tone="s.confidence === 'metadata' ? 'green' : 'neutral'"
-                  >{{
-                    s.confidence === "metadata"
-                      ? t("Session metadata")
-                      : t("Directory rule")
-                  }}</Badge
-                >
+                <Badge :tone="s.confidence === 'metadata' ? 'green' : 'neutral'">
+                  {{ s.confidence === "metadata" ? t("Session metadata") : t("Directory rule") }}
+                </Badge>
               </td>
               <td class="tabular">{{ bytes(s.size) }}</td>
               <td class="secondary">{{ relativeTime(s.modified) }}</td>
@@ -433,130 +443,108 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
             'Sessions are indexed from bounded JSONL metadata. This list shows the 300 most recent sessions.',
           )
         "
-        ><template #icon><Terminal :size="24" /></template
-      ></EmptyState></section
-  ></template>
-  <template v-else-if="page === 'Processes'"
-    ><PageHeading :title="t('Processes')"
-      ><ContextHelp :label="t('Resource measurement')"
-        ><p>
-          {{ t("RSS may include shared memory") }}.
-          {{ t("100% CPU = one core") }}.
-        </p></ContextHelp
-      ></PageHeading
-    >
+      >
+        <template #icon><Terminal :size="24" /></template>
+      </EmptyState>
+    </section>
+  </template>
+  <template v-else-if="page === 'Processes'">
+    <PageHeading :title="t('Processes')">
+      <ContextHelp :label="t('Resource measurement')">
+        <p>{{ t("RSS may include shared memory") }}. {{ t("100% CPU = one core") }}.</p>
+      </ContextHelp>
+    </PageHeading>
     <div class="resource-strip">
       <div>
-        <span class="resource-icon" :title="t('RSS may include shared memory')"
-          ><MemoryStick :size="20" /></span
-        ><span
-          >{{ t("Agent memory")
-          }}<strong>{{ bytes(sum("memory")) }}</strong></span
+        <span
+          class="resource-icon"
+          :title="t('RSS may include shared memory')"
         >
+          <MemoryStick :size="20" />
+        </span>
+        <span>
+          {{ t("Agent memory") }}
+          <strong>{{ bytes(sum("memory")) }}</strong>
+        </span>
       </div>
       <div>
-        <span class="resource-icon" :title="t('100% CPU = one core')"
-          ><Cpu :size="20" /></span
-        ><span
-          >{{ t("Combined CPU")
-          }}<strong>{{ sum("cpu").toFixed(1) }}<small>%</small></strong></span
+        <span
+          class="resource-icon"
+          :title="t('100% CPU = one core')"
         >
+          <Cpu :size="20" />
+        </span>
+        <span>
+          {{ t("Combined CPU") }}
+          <strong>
+            {{ sum("cpu").toFixed(1) }}
+            <small>%</small>
+          </strong>
+        </span>
       </div>
       <div>
-        <span class="resource-icon"><Layers3 :size="20" /></span
-        ><span
-          >{{ t("Running processes")
-          }}<strong>{{ data.processes.length }}</strong></span
-        >
+        <span class="resource-icon"><Layers3 :size="20" /></span>
+        <span>
+          {{ t("Running processes") }}
+          <strong>{{ data.processes.length }}</strong>
+        </span>
       </div>
       <div>
-        <span class="resource-icon amber"><TriangleAlert :size="20" /></span
-        ><span
-          >{{ t("Needs attention")
-          }}<strong>{{
-            data.processes.filter((p) => p.recommendation === "review").length
-          }}</strong></span
-        >
+        <span class="resource-icon amber"><TriangleAlert :size="20" /></span>
+        <span>
+          {{ t("Needs attention") }}
+          <strong>
+            {{
+              data.processes.filter((p) => ["suggested", "review"].includes(assessmentCategory(p)))
+                .length
+            }}
+          </strong>
+        </span>
       </div>
     </div>
-    <ProcessTriage
-      :processes="data.processes"
-      :roots="data.roots"
-      :monitoring="data.monitoring"
-      @review="reviewSuggestions"
-      @stop-suggested="emit('stopSuggested', $event)" />
-    <ProcessAnalytics :data="data" :query="query" />
+    <ProcessAnalytics
+      :data="data"
+      :query="query"
+    />
     <div class="page-toolbar">
       <UiTabs
         v-model="processFilter"
         class="filter-tabs"
         :label="t('Process categories')"
-        :options="[
-          { value: 'all', label: t('All processes') },
-          {
-            value: 'suggested',
-            label: t('Suggested cleanup'),
-            count: data.processes.filter(
-              (p) => assessmentCategory(p) === 'suggested',
-            ).length,
-          },
-          {
-            value: 'review',
-            label: t('Needs attention'),
-            count: data.processes.filter(
-              (p) =>
-                p.recommendation === 'review' ||
-                assessmentCategory(p) === 'review',
-            ).length,
-          },
-        ]"
+        :options="processCategoryOptions"
       />
     </div>
     <section class="panel process-results">
       <ProcessList
-        v-if="procs.length"
         :processes="procs"
         :all="data.processes"
+        :monitoring="data.monitoring"
+        :refreshing="processesRefreshing"
+        :filter="processFilter"
+        @refresh="emit('refreshProcesses')"
+        @stop-suggested="emit('stopSuggested', $event)"
         @stop="emit('stop', $event)"
         @stop-many="emit('stopMany', $event)"
       />
-      <EmptyState
-        v-else
-        :title="
-          processFilter === 'suggested'
-            ? t('No suggested leftovers yet')
-            : onlyOrphans
-              ? t('No leftover processes observed')
-              : t('No matching agent processes')
-        "
-        :description="
-          processFilter === 'suggested'
-            ? t(
-                'Keep monitoring to build continuous evidence. Working processes and services remain excluded from suggestions.',
-              )
-            : onlyOrphans
-              ? t(
-                  'Child processes are tracked while AgentLens runs. An exited parent is a signal to review, rather than proof of a problem.',
-                )
-              : t(
-                  'Interpreters without an identifiable parent remain unclassified.',
-                )
-        "
-        ><template #icon><Cpu :size="25" /></template
-      ></EmptyState></section
-  ></template>
-  <template v-else-if="page === 'Cleanup'"
-    ><PageHeading :title="t('Cleanup')"
-      ><button class="button secondary" @click="rulesOpen = !rulesOpen">
-        {{ t("Adjust cleanup rules") }}</button
-      ><button
+    </section>
+  </template>
+  <template v-else-if="page === 'Cleanup'">
+    <PageHeading :title="t('Cleanup')">
+      <button
+        class="button secondary"
+        @click="rulesOpen = !rulesOpen"
+      >
+        {{ t("Adjust cleanup rules") }}
+      </button>
+      <button
         class="button primary"
         :disabled="data.scanning || !data.monitoring"
         @click="emit('refresh')"
       >
-        <ScanSearch :size="16" />{{ t("Recheck files") }}
-      </button></PageHeading
-    >
+        <ScanSearch :size="16" />
+        {{ t("Recheck files") }}
+      </button>
+    </PageHeading>
     <CleanupDiagnostics
       :data="data"
       :controls="false"
@@ -580,8 +568,12 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
           }))
         "
       />
-      <button class="text-button" @click="selectAll">
-        <CheckCheck :size="15" />{{
+      <button
+        class="text-button"
+        @click="selectAll"
+      >
+        <CheckCheck :size="15" />
+        {{
           candidates.length && candidates.every((f) => selected.has(f.id))
             ? t("Deselect all")
             : t("Select all")
@@ -598,7 +590,10 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
           </p>
         </div>
       </div>
-      <div v-if="candidates.length" class="file-list">
+      <div
+        v-if="candidates.length"
+        class="file-list"
+      >
         <FileRow
           v-for="f in candidates"
           :key="f.id"
@@ -612,39 +607,38 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
       <EmptyState
         v-else
         :title="t('Nothing to clean up right now')"
-        :description="
-          t(
-            'Active agents, session data, project files, and recently changed files are retained. A healthy workspace may have no cleanup candidates.',
-          )
-        "
-        ><template #icon><Sparkles :size="25" /></template
-      ></EmptyState>
+        :description="cleanupEmptyReason"
+      >
+        <template #icon><Sparkles :size="25" /></template>
+      </EmptyState>
       <div class="cleanup-action-bar">
         <div>
-          <strong>{{ selectedFiles.length }} {{ t("files selected") }}</strong
-          ><span>{{ bytes(selectedBytes) }} </span>
+          <strong>{{ selectedFiles.length }} {{ t("files selected") }}</strong>
+          <span>{{ bytes(selectedBytes) }}</span>
         </div>
         <button
           class="button primary"
           :disabled="!selectedFiles.length"
           @click="emit('review')"
         >
-          {{ t("Review selected files") }}<ArrowRight :size="15" />
+          {{ t("Review selected files") }}
+          <ArrowRight :size="15" />
         </button>
       </div>
     </section>
   </template>
-  <template v-else-if="page === 'Activity'"
-    ><ActivityView
+  <template v-else-if="page === 'Activity'">
+    <ActivityView
       :events="data.activity"
       :history="data.history"
       :data="data"
       @navigate="emit('navigate', $event)"
       :query="query"
       :timestamp="data.timestamp"
-  /></template>
-  <template v-else-if="page === 'Settings'"
-    ><PageHeading :title="t('Settings')" />
+    />
+  </template>
+  <template v-else-if="page === 'Settings'">
+    <PageHeading :title="t('Settings')" />
     <div class="settings-layout">
       <section class="panel settings-panel">
         <div class="section-heading">
@@ -696,9 +690,7 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
           <UiSelect
             :model-value="data.settings.retentionDays"
             :label="t('History retention')"
-            :options="
-              [1, 7, 30].map((v) => ({ value: v, label: t('{0} days', v) }))
-            "
+            :options="[1, 7, 30].map((v) => ({ value: v, label: t('{0} days', v) }))"
             @update:model-value="update('retentionDays', $event)"
           />
         </div>
@@ -731,6 +723,7 @@ const sum = (key: "memory" | "cpu" | "reclaimable") =>
         @add="emit('add')"
         @remove="emit('remove', $event)"
         @reveal="emit('reveal', $event)"
-      /></div
-  ></template>
+      />
+    </div>
+  </template>
 </template>

@@ -29,19 +29,12 @@ export const customAccent = ref(
 export function setLocale(value: Language) {
   locale.value = value;
   try {
-    if (typeof window !== "undefined")
-      window.localStorage.setItem("agentlens.locale", value);
+    if (typeof window !== "undefined") window.localStorage.setItem("agentlens.locale", value);
   } catch {}
   if (typeof document !== "undefined") document.documentElement.lang = value;
 }
-export function setTheme(
-  value: Theme,
-  base = customBase.value,
-  accent = customAccent.value,
-) {
-  const normalized = ["light", "dark", "custom"].includes(value)
-    ? value
-    : "light";
+export function setTheme(value: Theme, base = customBase.value, accent = customAccent.value) {
+  const normalized = ["light", "dark", "custom"].includes(value) ? value : "light";
   theme.value = normalized;
   customBase.value = base;
   customAccent.value = /^#[0-9a-f]{6}$/i.test(accent) ? accent : "#167c83";
@@ -65,20 +58,14 @@ export function setTheme(
       .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
       .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
     root.style.setProperty("--custom-accent", customAccent.value);
-    root.style.setProperty(
-      "--custom-on-accent",
-      luminance > 0.179 ? "#12202d" : "#ffffff",
-    );
+    root.style.setProperty("--custom-on-accent", luminance > 0.179 ? "#12202d" : "#ffffff");
     root.style.colorScheme = root.dataset.colorScheme;
   }
 }
 const dictionary = zh as Record<string, string>;
 export function t(message: string, ...values: (string | number)[]): string {
-  const result =
-    locale.value === "zh-CN" ? dictionary[message] || message : message;
-  return result.replace(/\{(\d+)\}/g, (_, index) =>
-    String(values[Number(index)] ?? ""),
-  );
+  const result = locale.value === "zh-CN" ? dictionary[message] || message : message;
+  return result.replace(/\{(\d+)\}/g, (_, index) => String(values[Number(index)] ?? ""));
 }
 export const pageLabel = (page: string) => t(page);
 export function categoryLabel(category: string) {
@@ -98,9 +85,7 @@ export function categoryLabel(category: string) {
   );
 }
 export function rootLabel(label: string) {
-  return locale.value === "zh-CN"
-    ? label.replace(/ storage$/, " 存储目录")
-    : label;
+  return locale.value === "zh-CN" ? label.replace(/ storage$/, " 存储目录") : label;
 }
 setLocale(locale.value);
 setTheme(theme.value);

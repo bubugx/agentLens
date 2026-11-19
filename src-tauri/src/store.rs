@@ -31,8 +31,54 @@ impl Store {
             )
             .map_err(|e| e.to_string())?;
         }
-        conn.execute_batch("PRAGMA user_version=1; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS history (time INTEGER PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS activity (id TEXT PRIMARY KEY, time INTEGER NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS inventory_files (path TEXT PRIMARY KEY, root_id TEXT NOT NULL, status TEXT NOT NULL, size INTEGER NOT NULL, data TEXT NOT NULL); CREATE INDEX IF NOT EXISTS inventory_status ON inventory_files(status,root_id,size DESC,path); CREATE TABLE IF NOT EXISTS inventory_roots (id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS operations (id TEXT PRIMARY KEY, time INTEGER NOT NULL, state TEXT NOT NULL, data TEXT NOT NULL);").map_err(|e|e.to_string())?;
-        conn.execute_batch("CREATE TABLE IF NOT EXISTS resource_samples (time INTEGER NOT NULL,scope TEXT NOT NULL,scope_id TEXT NOT NULL,memory INTEGER NOT NULL,cpu REAL NOT NULL,processes INTEGER NOT NULL,PRIMARY KEY(scope,scope_id,time)); CREATE INDEX IF NOT EXISTS resource_samples_time ON resource_samples(time);").map_err(|e|e.to_string())?;
+        conn.execute_batch(
+            r#"
+                PRAGMA user_version=1;
+                PRAGMA journal_mode=WAL;
+                PRAGMA synchronous=FULL;
+                CREATE TABLE IF NOT EXISTS config (
+                    key TEXT PRIMARY KEY, value TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS history (
+                    time INTEGER PRIMARY KEY, data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS activity (
+                    id TEXT PRIMARY KEY, time INTEGER NOT NULL, data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS inventory_files (
+                    path TEXT PRIMARY KEY,
+                    root_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    size INTEGER NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS inventory_status
+                    ON inventory_files(status, root_id, size DESC, path);
+                CREATE TABLE IF NOT EXISTS inventory_roots (
+                    id TEXT PRIMARY KEY, data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS operations (
+                    id TEXT PRIMARY KEY, time INTEGER NOT NULL,
+                    state TEXT NOT NULL, data TEXT NOT NULL
+                );
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute_batch(
+            r#"
+                CREATE TABLE IF NOT EXISTS resource_samples (
+                    time INTEGER NOT NULL,
+                    scope TEXT NOT NULL,
+                    scope_id TEXT NOT NULL,
+                    memory INTEGER NOT NULL,
+                    cpu REAL NOT NULL,
+                    processes INTEGER NOT NULL,
+                    PRIMARY KEY(scope, scope_id, time)
+                );
+                CREATE INDEX IF NOT EXISTS resource_samples_time ON resource_samples(time);
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
         Ok(Self { conn })
     }
     pub fn get<T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
@@ -116,7 +162,17 @@ impl Store {
         let mut seen = HashSet::with_capacity(files.len());
         {
             let mut insert = transaction
-                .prepare("INSERT INTO inventory_files VALUES (?,?,?,?,?) ON CONFLICT(path) DO UPDATE SET root_id=excluded.root_id,status=excluded.status,size=excluded.size,data=excluded.data WHERE inventory_files.data<>excluded.data")
+                .prepare(
+                    r#"
+                INSERT INTO inventory_files VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    root_id=excluded.root_id,
+                    status=excluded.status,
+                    size=excluded.size,
+                    data=excluded.data
+                WHERE inventory_files.data<>excluded.data
+            "#,
+                )
                 .map_err(|e| e.to_string())?;
             for (index, file) in files.iter().enumerate() {
                 if index % 256 == 0 && cancelled() {
@@ -188,7 +244,18 @@ impl Store {
         );
         let filter = "status=?1 AND path LIKE ?2 ESCAPE '!'";
         let mut groups = Vec::new();
-        let mut statement = read.prepare(&format!("SELECT root_id,COUNT(*),SUM(size),r.data FROM inventory_files f LEFT JOIN inventory_roots r ON r.id=f.root_id WHERE {filter} GROUP BY root_id ORDER BY SUM(size) DESC,root_id")).map_err(|e|e.to_string())?;
+        let mut statement = read
+            .prepare(&format!(
+                r#"
+                SELECT root_id, COUNT(*), SUM(size), r.data
+                FROM inventory_files f
+                LEFT JOIN inventory_roots r ON r.id=f.root_id
+                WHERE {filter}
+                GROUP BY root_id
+                ORDER BY SUM(size) DESC, root_id
+            "#
+            ))
+            .map_err(|e| e.to_string())?;
         let rows = statement
             .query_map(params![status, pattern], |r| {
                 Ok((
@@ -222,7 +289,16 @@ impl Store {
             .filter(|g| root.is_none_or(|r| g.id == r))
             .map(|g| g.bytes)
             .sum();
-        let mut statement = read.prepare(&format!("SELECT data FROM inventory_files WHERE {filter} AND (?3 IS NULL OR root_id=?3) ORDER BY size DESC,path LIMIT 50 OFFSET ?4")).map_err(|e|e.to_string())?;
+        let mut statement = read
+            .prepare(&format!(
+                r#"
+                SELECT data FROM inventory_files
+                WHERE {filter} AND (?3 IS NULL OR root_id=?3)
+                ORDER BY size DESC, path
+                LIMIT 50 OFFSET ?4
+            "#
+            ))
+            .map_err(|e| e.to_string())?;
         let rows = statement
             .query_map(params![status, pattern, root, offset], |r| {
                 r.get::<_, String>(0)
@@ -244,10 +320,19 @@ impl Store {
         })
     }
     pub fn history(&self) -> Vec<HistoryPoint> {
-        let Ok(mut q) = self
-            .conn
-            .prepare("WITH ranked AS (SELECT data,time,ROW_NUMBER() OVER (ORDER BY time) AS n,COUNT(*) OVER () AS total FROM history) SELECT data FROM ranked WHERE n % MAX(1,(total-6+493)/494)=0 OR n>total-6 ORDER BY time DESC")
-        else {
+        let Ok(mut q) = self.conn.prepare(
+            r#"
+                WITH ranked AS (
+                    SELECT data, time,
+                        ROW_NUMBER() OVER (ORDER BY time) AS n,
+                        COUNT(*) OVER () AS total
+                    FROM history
+                )
+                SELECT data FROM ranked
+                WHERE n % MAX(1, (total-6+493)/494)=0 OR n>total-6
+                ORDER BY time DESC
+            "#,
+        ) else {
             return vec![];
         };
         let Ok(rows) = q.query_map([], |r| r.get::<_, String>(0)) else {
@@ -289,7 +374,24 @@ impl Store {
         since: u64,
     ) -> Result<Vec<crate::resources::ResourcePoint>, String> {
         let width = (now().saturating_sub(since) / 240).max(1);
-        let mut query=self.conn.prepare("WITH ranked AS (SELECT time,memory,cpu,processes,ROW_NUMBER() OVER (PARTITION BY time/?4 ORDER BY time DESC) AS n FROM resource_samples WHERE scope=?1 AND scope_id=?2 AND time>=?3) SELECT time,memory,cpu,processes FROM ranked WHERE n=1 ORDER BY time").map_err(|e|e.to_string())?;
+        let mut query = self
+            .conn
+            .prepare(
+                r#"
+                WITH ranked AS (
+                    SELECT time, memory, cpu, processes,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY time/?4 ORDER BY time DESC
+                        ) AS n
+                    FROM resource_samples
+                    WHERE scope=?1 AND scope_id=?2 AND time>=?3
+                )
+                SELECT time, memory, cpu, processes FROM ranked
+                WHERE n=1
+                ORDER BY time
+            "#,
+            )
+            .map_err(|e| e.to_string())?;
         let rows = query
             .query_map(params![scope, id, since, width], |r| {
                 Ok(crate::resources::ResourcePoint {
@@ -306,7 +408,23 @@ impl Store {
     pub fn activity(&self) -> Vec<Activity> {
         let Ok(mut q) = self
             .conn
-            .prepare("WITH ranked AS (SELECT data,time,rowid,ROW_NUMBER() OVER (PARTITION BY CASE WHEN json_extract(data,'$.kind') IN ('growth','decrease') THEN 'storage' ELSE json_extract(data,'$.kind') END ORDER BY time DESC,rowid DESC) AS rank FROM activity WHERE time >= strftime('%s','now') - 30*86400) SELECT data FROM ranked WHERE rank<=400 ORDER BY time DESC,rowid DESC")
+            .prepare(r#"
+                WITH ranked AS (
+                    SELECT data, time, rowid,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY CASE
+                                WHEN json_extract(data,'$.kind') IN ('growth','decrease') THEN 'storage'
+                                ELSE json_extract(data,'$.kind')
+                            END
+                            ORDER BY time DESC, rowid DESC
+                        ) AS rank
+                    FROM activity
+                    WHERE time >= strftime('%s','now') - 30*86400
+                )
+                SELECT data FROM ranked
+                WHERE rank<=400
+                ORDER BY time DESC, rowid DESC
+            "#)
         else {
             return vec![];
         };
@@ -525,7 +643,19 @@ mod inventory_tests {
         store
             .replace_inventory(&[file.clone(), other.clone()], std::slice::from_ref(&root))
             .unwrap();
-        store.conn.execute_batch("CREATE TEMP TABLE updates (n INTEGER); INSERT INTO updates VALUES (0); CREATE TEMP TRIGGER count_updates AFTER UPDATE ON inventory_files BEGIN UPDATE updates SET n=n+1; END;").unwrap();
+        store
+            .conn
+            .execute_batch(
+                r#"
+                CREATE TEMP TABLE updates (n INTEGER);
+                INSERT INTO updates VALUES (0);
+                CREATE TEMP TRIGGER count_updates AFTER UPDATE ON inventory_files
+                BEGIN
+                    UPDATE updates SET n=n+1;
+                END;
+            "#,
+            )
+            .unwrap();
         store
             .replace_inventory(&[file.clone(), other], std::slice::from_ref(&root))
             .unwrap();

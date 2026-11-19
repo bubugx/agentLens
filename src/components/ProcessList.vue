@@ -7,14 +7,10 @@ import {
   processKey,
   assessmentCategory,
   assessmentReason,
+  assessmentLabel,
+  assessmentTone,
 } from "../lib/processes";
-import {
-  AGENT_META,
-  bytes,
-  delta,
-  compactPath,
-  type Process,
-} from "../lib/types";
+import { AGENT_META, bytes, delta, compactPath, type Process } from "../lib/types";
 import {
   Check,
   Minus,
@@ -22,21 +18,37 @@ import {
   ChevronRight,
   Terminal,
   X,
+  ScanSearch,
+  Sparkles,
 } from "lucide-vue-next";
 import AgentIcon from "./AgentIcon.vue";
 import Badge from "./Badge.vue";
-const props = defineProps<{ processes: Process[]; all: Process[] }>();
-defineEmits<{ stop: [process: Process]; stopMany: [processes: Process[]] }>();
+import EmptyState from "./EmptyState.vue";
+const props = defineProps<{
+  processes: Process[];
+  all: Process[];
+  monitoring: boolean;
+  refreshing: boolean;
+  filter: string;
+}>();
+defineEmits<{
+  stop: [process: Process];
+  stopMany: [processes: Process[]];
+  stopSuggested: [processes: Process[]];
+  refresh: [];
+}>();
+const suggested = computed(() => props.all.filter((p) => assessmentCategory(p) === "suggested"));
 const expanded = ref<number | null>(null);
 const parent = (p: Process) => props.all.find((v) => v.pid === p.parentPid);
 const selected = ref(new Set<string>());
+const selectable = computed(() =>
+  props.processes.filter((p) => assessmentCategory(p) !== "protected"),
+);
 const selectedProcesses = computed(() =>
   props.processes.filter((p) => selected.value.has(processKey(p))),
 );
 const allSelected = computed(
-  () =>
-    props.processes.length > 0 &&
-    selectedProcesses.value.length === props.processes.length,
+  () => selectable.value.length > 0 && selectedProcesses.value.length === selectable.value.length,
 );
 const selectedMemory = computed(() =>
   selectedProcesses.value.reduce((total, p) => total + p.memory, 0),
@@ -44,10 +56,10 @@ const selectedMemory = computed(() =>
 watch(
   () => props.processes,
   (processes) => {
-    const visible = new Set(processes.map(processKey));
-    selected.value = new Set(
-      [...selected.value].filter((key) => visible.has(key)),
+    const visible = new Set(
+      processes.filter((p) => assessmentCategory(p) !== "protected").map(processKey),
     );
+    selected.value = new Set([...selected.value].filter((key) => visible.has(key)));
   },
 );
 function toggle(process: Process) {
@@ -58,23 +70,42 @@ function toggle(process: Process) {
   selected.value = next;
 }
 function toggleAll() {
-  selected.value = allSelected.value
-    ? new Set()
-    : new Set(props.processes.map(processKey));
+  selected.value = allSelected.value ? new Set() : new Set(selectable.value.map(processKey));
 }
 </script>
 <template>
   <div class="process-selection-bar">
-    <div class="process-selection-summary" role="status" aria-live="polite">
+    <div
+      class="process-selection-summary"
+      role="status"
+      aria-live="polite"
+    >
       <template v-if="selectedProcesses.length">
-        <strong>{{
-          t("{0} processes selected", selectedProcesses.length)
-        }}</strong>
+        <strong>{{ t("{0} processes selected", selectedProcesses.length) }}</strong>
         <span>{{ t("Combined RSS {0}", bytes(selectedMemory)) }}</span>
       </template>
       <span v-else>{{ processes.length }} {{ t("processes") }}</span>
     </div>
     <div class="inline-controls">
+      <button
+        class="button secondary small"
+        :disabled="refreshing || !monitoring"
+        @click="$emit('refresh')"
+      >
+        <ScanSearch
+          :size="14"
+          :class="{ spinning: refreshing }"
+        />
+        {{ refreshing ? t("Checking processes…") : t("Recheck processes") }}
+      </button>
+      <button
+        class="button primary small"
+        :disabled="refreshing || !monitoring || !suggested.length"
+        @click="$emit('stopSuggested', [...suggested])"
+      >
+        <Sparkles :size="14" />
+        {{ t("Review suggested batch ({0})", suggested.length) }}
+      </button>
       <button
         v-if="selectedProcesses.length"
         class="button secondary small"
@@ -88,11 +119,21 @@ function toggleAll() {
         :disabled="!selectedProcesses.length"
         @click="$emit('stopMany', selectedProcesses)"
       >
-        <X :size="14" />{{ t("Stop selected processes") }}
+        <X :size="14" />
+        {{ t("Stop selected processes") }}
       </button>
     </div>
   </div>
-  <div class="table-wrap">
+  <p
+    v-if="!monitoring"
+    class="process-monitoring-hint"
+  >
+    {{ t("Resume monitoring to refresh process suggestions.") }}
+  </p>
+  <div
+    v-if="processes.length"
+    class="table-wrap"
+  >
     <table class="process-table explained-processes">
       <colgroup>
         <col class="process-selection-col" />
@@ -109,13 +150,16 @@ function toggleAll() {
             <button
               role="checkbox"
               :aria-label="t('Select all visible processes')"
-              :aria-checked="
-                allSelected ? true : selectedProcesses.length ? 'mixed' : false
-              "
+              :aria-checked="allSelected ? true : selectedProcesses.length ? 'mixed' : false"
               :class="['checkbox', { selected: selectedProcesses.length > 0 }]"
+              :disabled="!selectable.length"
               @click="toggleAll"
             >
-              <Check v-if="allSelected" :size="12" /><Minus
+              <Check
+                v-if="allSelected"
+                :size="12"
+              />
+              <Minus
                 v-else-if="selectedProcesses.length"
                 :size="12"
               />
@@ -124,9 +168,7 @@ function toggleAll() {
           <th>{{ t("Process") }}</th>
           <th>{{ t("Purpose") }}</th>
           <th>
-            <abbr :title="t('RSS may include shared memory')">{{
-              t("Memory")
-            }}</abbr>
+            <abbr :title="t('RSS may include shared memory')">{{ t("Memory") }}</abbr>
           </th>
           <th><abbr :title="t('100% CPU = one core')">CPU</abbr></th>
           <th>{{ t("State") }}</th>
@@ -134,7 +176,10 @@ function toggleAll() {
         </tr>
       </thead>
       <tbody>
-        <template v-for="p in processes" :key="`${p.pid}:${p.startTime}`">
+        <template
+          v-for="p in processes"
+          :key="`${p.pid}:${p.startTime}`"
+        >
           <tr
             :class="{
               expanded: expanded === p.pid,
@@ -147,9 +192,13 @@ function toggleAll() {
                 :aria-label="t('Select {0} (PID {1})', p.name, p.pid)"
                 :aria-checked="selected.has(processKey(p))"
                 :class="['checkbox', { selected: selected.has(processKey(p)) }]"
+                :disabled="assessmentCategory(p) === 'protected'"
                 @click="toggle(p)"
               >
-                <Check v-if="selected.has(processKey(p))" :size="12" />
+                <Check
+                  v-if="selected.has(processKey(p))"
+                  :size="12"
+                />
               </button>
             </td>
             <td>
@@ -162,55 +211,49 @@ function toggleAll() {
                 <component
                   :is="expanded === p.pid ? ChevronDown : ChevronRight"
                   :size="13"
-                /><span class="process-symbol"><Terminal :size="15" /></span
-                ><span
-                  ><strong>{{ p.name }}</strong
-                  ><small
-                    ><AgentIcon :id="p.agent" small />{{
-                      AGENT_META[p.agent]?.name
-                    }}
-                    · {{ p.pid }}</small
-                  ></span
-                >
+                />
+                <span class="process-symbol"><Terminal :size="15" /></span>
+                <span>
+                  <strong>{{ p.name }}</strong>
+                  <small>
+                    <AgentIcon
+                      :id="p.agent"
+                      small
+                    />
+                    {{ AGENT_META[p.agent]?.name }} · {{ p.pid }}
+                  </small>
+                </span>
               </button>
             </td>
             <td class="process-purpose-cell">
               <strong>{{ purposeLabel(p.purpose) }}</strong>
-              <small class="process-analysis-reason">{{
-                assessmentReason(p)
-              }}</small>
+              <small class="process-analysis-reason">{{ assessmentReason(p) }}</small>
             </td>
             <td class="tabular">{{ bytes(p.memory) }}</td>
             <td class="tabular">{{ p.cpu.toFixed(1) }}%</td>
             <td>
               <Badge
                 dot
-                :tone="p.recommendation === 'review' ? 'amber' : 'neutral'"
-                >{{
-                  assessmentCategory(p) === "suggested"
-                    ? t("Suggested cleanup")
-                    : assessmentCategory(p) === "active"
-                      ? t("Still working")
-                      : assessmentCategory(p) === "protected"
-                        ? t("Excluded")
-                        : p.orphan
-                          ? t("Parent exited")
-                          : p.recommendation === "review"
-                            ? t("Needs attention")
-                            : t("Running")
-                }}</Badge
+                :tone="assessmentTone(assessmentCategory(p))"
               >
+                {{ assessmentLabel(assessmentCategory(p)) }}
+              </Badge>
             </td>
             <td>
               <button
                 class="button small danger-ghost"
+                :disabled="assessmentCategory(p) === 'protected'"
                 @click="$emit('stop', p)"
               >
-                {{ t("Stop") }}<X :size="12" />
+                {{ t("Stop") }}
+                <X :size="12" />
               </button>
             </td>
           </tr>
-          <tr v-if="expanded === p.pid" class="process-detail-row">
+          <tr
+            v-if="expanded === p.pid"
+            class="process-detail-row"
+          >
             <td colspan="7">
               <div class="process-detail-content">
                 <div class="process-explanation">
@@ -233,9 +276,7 @@ function toggleAll() {
                     <dt>{{ t("Project / working directory") }}</dt>
                     <dd :title="p.workingDirectory">
                       {{
-                        p.workingDirectory
-                          ? compactPath(p.workingDirectory)
-                          : t("Not available")
+                        p.workingDirectory ? compactPath(p.workingDirectory) : t("Not available")
                       }}
                     </dd>
                   </div>
@@ -253,8 +294,7 @@ function toggleAll() {
                     <dt>{{ t("Running for") }}</dt>
                     <dd>
                       {{ t("{0} minutes", Math.floor(p.runtimeSeconds / 60)) }}
-                      · RAM {{ delta(p.memoryDelta) }} · CPU
-                      {{ p.cpuDelta >= 0 ? "+" : "−"
+                      · RAM {{ delta(p.memoryDelta) }} · CPU {{ p.cpuDelta >= 0 ? "+" : "−"
                       }}{{ Math.abs(p.cpuDelta).toFixed(1) }} {{ t("pp") }}
                     </dd>
                   </div>
@@ -266,4 +306,17 @@ function toggleAll() {
       </tbody>
     </table>
   </div>
+  <EmptyState
+    v-else
+    :title="
+      filter === 'suggested' ? t('No suggested leftovers yet') : t('No matching agent processes')
+    "
+    :description="
+      filter === 'suggested'
+        ? t(
+            'Keep monitoring to build continuous evidence. Working processes and services remain excluded from suggestions.',
+          )
+        : t('No processes match this category and search. Other categories remain available above.')
+    "
+  />
 </template>

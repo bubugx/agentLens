@@ -60,8 +60,7 @@ export function message(
       actionLabel: options.actionLabel,
     },
   ];
-  const duration =
-    options.duration ?? (tone === "error" || tone === "warning" ? 10000 : 7000);
+  const duration = options.duration ?? (tone === "error" || tone === "warning" ? 10000 : 7000);
   if (duration > 0) {
     timers.set(id, { remaining: duration, started: Date.now() });
     resumeMessage(id);

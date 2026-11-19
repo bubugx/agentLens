@@ -30,24 +30,20 @@ describe("custom Agent lifecycle", () => {
     const adopted = demoAdopt(demoSnapshot(), request());
     const id = adopted.agentDefinitions![0].id;
     expect(adopted.processes.filter((p) => p.agent === id)).toHaveLength(2);
-    expect(
-      demoProcessCandidates(adopted).find((c) => c.pid === 48130)?.agent,
-    ).toBeNull();
+    expect(demoProcessCandidates(adopted).find((c) => c.pid === 48130)?.agent).toBeNull();
     const restored = restoreDemoAdoption(demoSnapshot());
     expect(restored.processes.filter((p) => p.agent === id)).toHaveLength(2);
     const detached = demoDetach(restored, id);
     expect(detached.processes.some((p) => p.agent === id)).toBe(false);
-    expect(
-      demoProcessCandidates(detached).find((c) => c.pid === 48120)?.agent,
-    ).toBeNull();
+    expect(demoProcessCandidates(detached).find((c) => c.pid === 48120)?.agent).toBeNull();
     syncAgentDefinitions(detached.agentDefinitions);
     expect(AGENT_META[id].name).toBe("Research");
     expect(AGENT_META[id].enabled).toBe(false);
   });
   it("rejects stale process identities and directory overlaps before a registry is saved", () => {
-    expect(() =>
-      demoAdoptionPreview(demoSnapshot(), { ...request(), startTime: 99 }),
-    ).toThrow(/identity changed/);
+    expect(() => demoAdoptionPreview(demoSnapshot(), { ...request(), startTime: 99 })).toThrow(
+      /identity changed/,
+    );
     expect(() =>
       demoAdoptionPreview(demoSnapshot(), {
         ...request(),

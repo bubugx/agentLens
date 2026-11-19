@@ -1,23 +1,8 @@
 <script setup lang="ts">
 import { purposeLabel, stopImpact } from "./lib/processes";
-import {
-  t,
-  locale,
-  theme,
-  customBase,
-  customAccent,
-  setLocale,
-  setTheme,
-} from "./lib/i18n";
+import { t, locale, theme, customBase, customAccent, setLocale, setTheme } from "./lib/i18n";
 import UiSelect from "./components/UiSelect.vue";
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-} from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import {
   Activity,
   ArrowRight,
@@ -48,21 +33,8 @@ import {
 } from "lucide-vue-next";
 import * as client from "./lib/client";
 import { listen } from "@tauri-apps/api/event";
-import {
-  AGENT_META,
-  bytes,
-  compactPath,
-  delta,
-  syncAgentDefinitions,
-} from "./lib/types";
-import type {
-  ActionResult,
-  CleanupPlan,
-  Page,
-  Process,
-  Settings,
-  Snapshot,
-} from "./lib/types";
+import { AGENT_META, bytes, compactPath, delta, syncAgentDefinitions } from "./lib/types";
+import type { ActionResult, CleanupPlan, Page, Process, Settings, Snapshot } from "./lib/types";
 import NotificationHost from "./components/NotificationHost.vue";
 import { message } from "./lib/notifications";
 import { growthSignals } from "./lib/types";
@@ -88,6 +60,7 @@ const data = shallowRef<Snapshot | null>(null),
   busy = ref(false),
   menu = ref(false),
   refreshing = ref(false),
+  processesRefreshing = ref(false),
   agentDetail = ref<string | null>(null),
   plan = ref<CleanupPlan | null>(null),
   stopping = ref<Process | null>(null),
@@ -102,8 +75,7 @@ const data = shallowRef<Snapshot | null>(null),
   quicklook = ref(false);
 let unlistenProgress: (() => void) | undefined;
 let unlistenNavigate: (() => void) | undefined;
-let unlisten: (() => void) | undefined,
-  refreshTimer: ReturnType<typeof setTimeout> | undefined;
+let unlisten: (() => void) | undefined, refreshTimer: ReturnType<typeof setTimeout> | undefined;
 const preview = !client.native;
 const navigation = [
   { page: "Overview" as Page, icon: LayoutDashboard },
@@ -116,18 +88,11 @@ const utilities = [
   { page: "Cleanup" as Page, icon: Sparkles },
   { page: "Activity" as Page, icon: Activity },
 ];
-const agent = computed(() =>
-  data.value?.agents.find((a) => a.id === agentDetail.value),
-);
+const agent = computed(() => data.value?.agents.find((a) => a.id === agentDetail.value));
 const agentFiles = computed(
-  () =>
-    data.value?.files
-      .filter((f) => f.agent === agentDetail.value)
-      .slice(0, 6) || [],
+  () => data.value?.files.filter((f) => f.agent === agentDetail.value).slice(0, 6) || [],
 );
-const reclaimable = computed(
-  () => data.value?.agents.reduce((s, a) => s + a.reclaimable, 0) || 0,
-);
+const reclaimable = computed(() => data.value?.agents.reduce((s, a) => s + a.reclaimable, 0) || 0);
 
 function reload() {
   window.location.reload();
@@ -191,8 +156,7 @@ function receive(snapshot: Snapshot) {
         ),
         "warning",
         {
-          action: () =>
-            navigate(signal.metric === "storage" ? "Storage" : "Processes"),
+          action: () => navigate(signal.metric === "storage" ? "Storage" : "Processes"),
           actionLabel: t("Review"),
         },
       );
@@ -214,9 +178,7 @@ onMounted(async () => {
         };
     });
     if (client.native) {
-      unlistenNavigate = await listen<string>("navigate", (e) =>
-        navigate(e.payload as Page),
-      );
+      unlistenNavigate = await listen<string>("navigate", (e) => navigate(e.payload as Page));
     }
     receive(await client.snapshot());
   } catch (e) {
@@ -262,6 +224,18 @@ async function refresh() {
     fail(e);
   }
 }
+async function refreshProcesses() {
+  if (processesRefreshing.value) return;
+  processesRefreshing.value = true;
+  try {
+    receive(await client.refreshProcesses());
+    notify("Process analysis updated");
+  } catch (error) {
+    fail(error);
+  } finally {
+    processesRefreshing.value = false;
+  }
+}
 async function fullRescan() {
   try {
     await client.fullRescan();
@@ -284,8 +258,7 @@ async function settings(value: Settings) {
   setTheme(value.theme, value.customBase, value.customAccent);
   try {
     await client.saveSettings(value);
-    if (data.value && client.native)
-      data.value = { ...data.value, settings: value };
+    if (data.value && client.native) data.value = { ...data.value, settings: value };
     notify("Preferences saved");
   } catch (e) {
     fail(e);
@@ -327,11 +300,7 @@ async function add() {
   try {
     await client.addRoot(projectPath.value, projectAgent.value);
     addOpen.value = false;
-    notify(
-      preview
-        ? "Sample project added"
-        : "Project added. The first scan will begin shortly.",
-    );
+    notify(preview ? "Sample project added" : "Project added. The first scan will begin shortly.");
     if (client.native) await refresh();
   } catch (e) {
     fail(e);
@@ -403,8 +372,7 @@ async function windowAction(action: "close" | "minimize" | "maximize") {
   else await win.toggleMaximize();
 }
 function search() {
-  if (query.value && ["Overview", "Settings"].includes(page.value))
-    page.value = "Storage";
+  if (query.value && ["Overview", "Settings"].includes(page.value)) page.value = "Storage";
 }
 </script>
 <template>
@@ -419,26 +387,38 @@ function search() {
     ]"
   >
     <aside class="sidebar glass">
-      <div class="window-controls" data-tauri-drag-region>
-        <template v-if="!client.native || data.platform !== 'macos'"
-          ><button
+      <div
+        class="window-controls"
+        data-tauri-drag-region
+      >
+        <template v-if="!client.native || data.platform !== 'macos'">
+          <button
             class="traffic close"
             :aria-label="t('Close window')"
-            @click="windowAction('close')" /><button
+            @click="windowAction('close')"
+          />
+          <button
             class="traffic minimize"
             :aria-label="t('Minimize window')"
-            @click="windowAction('minimize')" /><button
+            @click="windowAction('minimize')"
+          />
+          <button
             class="traffic maximize"
             :aria-label="t('Maximize window')"
             @click="windowAction('maximize')"
-        /></template>
+          />
+        </template>
       </div>
       <button
         class="brand"
         :aria-label="t('About AgentLens')"
         @click="about = true"
       >
-        <img src="/icon.svg" alt="" /><span>AgentLens</span>
+        <img
+          src="/icon.svg"
+          alt=""
+        />
+        <span>AgentLens</span>
       </button>
       <nav :aria-label="t('Main navigation')">
         <button
@@ -449,16 +429,20 @@ function search() {
           :aria-label="t(item.page)"
           @click="navigate(item.page)"
         >
-          <component :is="item.icon" :size="17" :stroke-width="1.7" /><span>{{
-            t(item.page)
-          }}</span
-          ><span v-if="item.page === 'Agents'" class="nav-count">{{
-            data.agents.filter((a) => a.installed).length
-          }}</span
-          ><i
-            v-if="
-              item.page === 'Processes' && data.processes.some((p) => p.orphan)
-            "
+          <component
+            :is="item.icon"
+            :size="17"
+            :stroke-width="1.7"
+          />
+          <span>{{ t(item.page) }}</span>
+          <span
+            v-if="item.page === 'Agents'"
+            class="nav-count"
+          >
+            {{ data.agents.filter((a) => a.installed).length }}
+          </span>
+          <i
+            v-if="item.page === 'Processes' && data.processes.some((p) => p.orphan)"
             class="attention-dot"
           />
         </button>
@@ -471,14 +455,18 @@ function search() {
           :aria-current="page === item.page ? 'page' : undefined"
           @click="navigate(item.page)"
         >
-          <component :is="item.icon" :size="17" :stroke-width="1.7" /><span>{{
-            t(item.page)
-          }}</span
-          ><span
+          <component
+            :is="item.icon"
+            :size="17"
+            :stroke-width="1.7"
+          />
+          <span>{{ t(item.page) }}</span>
+          <span
             v-if="item.page === 'Cleanup' && reclaimable"
             class="cleanup-count"
-            >{{ bytes(reclaimable) }}</span
           >
+            {{ bytes(reclaimable) }}
+          </span>
         </button>
       </nav>
       <div class="sidebar-spacer" />
@@ -487,27 +475,39 @@ function search() {
         :aria-label="t('Settings')"
         @click="navigate('Settings')"
       >
-        <SettingsIcon :size="17" :stroke-width="1.7" /><span>{{
-          t("Settings")
-        }}</span
-        ><kbd>⌘ ,</kbd>
+        <SettingsIcon
+          :size="17"
+          :stroke-width="1.7"
+        />
+        <span>{{ t("Settings") }}</span>
+        <kbd>⌘ ,</kbd>
       </button>
     </aside>
     <div class="main-layout">
-      <header class="titlebar" data-tauri-drag-region>
+      <header
+        class="titlebar"
+        data-tauri-drag-region
+      >
         <div class="titlebar-location">
           <button
             class="icon-button sidebar-toggle"
             :aria-label="t('Toggle sidebar')"
             @click="sidebar = !sidebar"
           >
-            <PanelLeft :size="17" /></button
-          ><Badge v-if="preview" tone="preview">{{
-            t("Preview · sample data")
-          }}</Badge>
+            <PanelLeft :size="17" />
+          </button>
+          <Badge
+            v-if="preview"
+            tone="preview"
+          >
+            {{ t("Preview · sample data") }}
+          </Badge>
         </div>
         <div class="titlebar-actions">
-          <div ref="quicklookAnchor" class="quicklook-anchor">
+          <div
+            ref="quicklookAnchor"
+            class="quicklook-anchor"
+          >
             <button
               class="quick-preview-button"
               :aria-label="t('Menu bar preview')"
@@ -515,12 +515,12 @@ function search() {
               :aria-expanded="quicklook"
               @click="quicklook = !quicklook"
             >
-              <MemoryStick :size="12" />{{
-                bytes(data.agents.reduce((s, a) => s + a.memory, 0))
-              }}<Cpu :size="12" />{{
-                data.agents.reduce((s, a) => s + a.cpu, 0).toFixed(0)
-              }}%</button
-            ><TrayPopover
+              <MemoryStick :size="12" />
+              {{ bytes(data.agents.reduce((s, a) => s + a.memory, 0)) }}
+              <Cpu :size="12" />
+              {{ data.agents.reduce((s, a) => s + a.cpu, 0).toFixed(0) }}%
+            </button>
+            <TrayPopover
               v-if="quicklook"
               embedded
               :data="data"
@@ -528,22 +528,27 @@ function search() {
               @navigate="navigate($event as Page)"
             />
           </div>
-          <label class="search-input"
-            ><Search :size="14" /><input
+          <label class="search-input">
+            <Search :size="14" />
+            <input
               ref="searchInput"
               v-model="query"
               :placeholder="t('Search files, agents…')"
               :aria-label="t('Search workspace')"
               @input="search"
-            /><button
+            />
+            <button
               v-if="query"
               class="search-clear"
               :aria-label="t('Clear search')"
               @click="query = ''"
             >
-              <X :size="12" /></button
-            ><kbd v-else>{{ t("⌘ K") }}</kbd></label
-          ><span class="toolbar-divider" /><button
+              <X :size="12" />
+            </button>
+            <kbd v-else>{{ t("⌘ K") }}</kbd>
+          </label>
+          <span class="toolbar-divider" />
+          <button
             :class="['icon-button', { spinning: refreshing }]"
             :aria-label="t('Refresh workspace')"
             :disabled="refreshing || data.scanning"
@@ -560,34 +565,47 @@ function search() {
             >
               <MoreHorizontal :size="19" />
             </button>
-            <div v-if="menu" class="dropdown-menu glass">
+            <div
+              v-if="menu"
+              class="dropdown-menu glass"
+            >
               <button @click="addProject">
-                <Plus :size="15" />{{ t("Add manually") }}</button
-              ><button @click="toggleMonitoring">
-                <Pause v-if="data.monitoring" :size="15" /><Play
+                <Plus :size="15" />
+                {{ t("Add manually") }}
+              </button>
+              <button @click="toggleMonitoring">
+                <Pause
+                  v-if="data.monitoring"
+                  :size="15"
+                />
+                <Play
                   v-else
                   :size="15"
-                />{{
-                  data.monitoring
-                    ? t("Pause monitoring")
-                    : t("Resume monitoring")
-                }}</button
-              ><button @click="navigate('Settings')">
-                <SettingsIcon :size="15" />{{ t("Preferences")
-                }}<kbd>⌘ ,</kbd></button
-              ><button
+                />
+                {{ data.monitoring ? t("Pause monitoring") : t("Resume monitoring") }}
+              </button>
+              <button @click="navigate('Settings')">
+                <SettingsIcon :size="15" />
+                {{ t("Preferences") }}
+                <kbd>⌘ ,</kbd>
+              </button>
+              <button
                 @click="
                   about = true;
                   menu = false;
                 "
               >
-                <Info :size="15" />{{ t("About AgentLens") }}
+                <Info :size="15" />
+                {{ t("About AgentLens") }}
               </button>
             </div>
           </div>
         </div>
       </header>
-      <main class="main-scroll" @click="menu = false">
+      <main
+        class="main-scroll"
+        @click="menu = false"
+      >
         <div class="content">
           <ScanStatus
             :data="data"
@@ -600,9 +618,11 @@ function search() {
             :preview="preview"
             @navigate="navigate"
             @agent="agentDetail = $event"
-          /><DetailPages
+          />
+          <DetailPages
             v-else
             :key="page"
+            :processes-refreshing="processesRefreshing"
             :page="page"
             :data="data"
             :query="query"
@@ -624,6 +644,7 @@ function search() {
             "
             @review="review"
             @refresh="refresh"
+            @refresh-processes="refreshProcesses"
             @full-rescan="fullRescan"
             @selected="selected = $event"
             @settings="settings"
@@ -638,15 +659,19 @@ function search() {
       :title="agent.name"
       wide
       @close="agentDetail = null"
-      ><div class="agent-modal-summary">
-        <AgentIcon :id="agent.id" /><Badge
+    >
+      <div class="agent-modal-summary">
+        <AgentIcon :id="agent.id" />
+        <Badge
           dot
           :tone="agent.processes ? 'green' : 'neutral'"
-          >{{ agent.processes ? t("Active") : t("Idle") }}</Badge
-        ><span class="agent-summary-count"
-          >{{ agent.sessions }} {{ t("sessions ·") }}
-          {{ agent.files.toLocaleString() }} {{ t("files") }}</span
         >
+          {{ agent.processes ? t("Active") : t("Idle") }}
+        </Badge>
+        <span class="agent-summary-count">
+          {{ agent.sessions }} {{ t("sessions ·") }} {{ agent.files.toLocaleString() }}
+          {{ t("files") }}
+        </span>
         <ContextHelp :label="t('Storage association')">
           <p>
             {{
@@ -659,16 +684,19 @@ function search() {
       </div>
       <div class="detail-metrics">
         <div>
-          <HardDrive :size="16" /><span>{{ t("Storage") }}</span
-          ><strong>{{ bytes(agent.storage) }}</strong>
+          <HardDrive :size="16" />
+          <span>{{ t("Storage") }}</span>
+          <strong>{{ bytes(agent.storage) }}</strong>
         </div>
         <div>
-          <MemoryStick :size="16" /><span>{{ t("Memory") }}</span
-          ><strong>{{ bytes(agent.memory) }}</strong>
+          <MemoryStick :size="16" />
+          <span>{{ t("Memory") }}</span>
+          <strong>{{ bytes(agent.memory) }}</strong>
         </div>
         <div>
-          <Cpu :size="16" /><span>CPU</span
-          ><strong>{{ agent.cpu.toFixed(1) }}%</strong>
+          <Cpu :size="16" />
+          <span>CPU</span>
+          <strong>{{ agent.cpu.toFixed(1) }}%</strong>
         </div>
       </div>
       <div class="mini-section-heading">
@@ -683,30 +711,37 @@ function search() {
           @reveal="reveal(f.path)"
         />
       </div>
-      <template #footer
-        ><button
+      <template #footer>
+        <button
           class="button secondary"
           @click="
             agentDetail = null;
             page = 'Sessions';
           "
         >
-          {{ t("View sessions") }}<Terminal :size="14" /></button
-        ><button
+          {{ t("View sessions") }}
+          <Terminal :size="14" />
+        </button>
+        <button
           class="button primary"
           @click="
             agentDetail = null;
             page = 'Storage';
           "
         >
-          {{ t("Explore storage") }}<ArrowRight :size="14" /></button></template
-    ></Modal>
+          {{ t("Explore storage") }}
+          <ArrowRight :size="14" />
+        </button>
+      </template>
+    </Modal>
     <Modal
       v-if="addOpen"
       :title="t('Watch a project')"
       @close="!busy && (addOpen = false)"
-      ><div class="form-field">
-        <label for="project-agent">{{ t("Associated agent") }}</label><UiSelect
+    >
+      <div class="form-field">
+        <label for="project-agent">{{ t("Associated agent") }}</label>
+        <UiSelect
           id="project-agent"
           v-model="projectAgent"
           :label="t('Associated agent')"
@@ -728,37 +763,52 @@ function search() {
             v-model="projectPath"
             :readonly="client.native"
             :placeholder="t('Choose a directory…')"
-          /><button class="button secondary" @click="chooseDirectory">
-            <FolderOpen :size="15" />{{ t("Browse") }}
+          />
+          <button
+            class="button secondary"
+            @click="chooseDirectory"
+          >
+            <FolderOpen :size="15" />
+            {{ t("Browse") }}
           </button>
         </div>
       </div>
       <div class="notice">
-        <ShieldCheck :size="18" /><span>{{
-          t(
-            "Project files are monitored and protected from cleanup. Agent association is your label; generated files may have other writers. Dependency and build directories are skipped.",
-          )
-        }}</span>
+        <ShieldCheck :size="18" />
+        <span>
+          {{
+            t(
+              "Project files are monitored and protected from cleanup. Agent association is your label; generated files may have other writers. Dependency and build directories are skipped.",
+            )
+          }}
+        </span>
       </div>
-      <template #footer
-        ><button
+      <template #footer>
+        <button
           class="button secondary"
           :disabled="busy"
           @click="addOpen = false"
         >
-          {{ t("Cancel") }}</button
-        ><button
+          {{ t("Cancel") }}
+        </button>
+        <button
           class="button primary"
           :disabled="!projectPath || busy"
           @click="add"
         >
-          <LoaderCircle v-if="busy" :size="15" class="spin" /><Plus
+          <LoaderCircle
+            v-if="busy"
+            :size="15"
+            class="spin"
+          />
+          <Plus
             v-else
             :size="15"
-          />{{ preview ? t("Add sample project") : t("Start watching") }}
-        </button></template
-      ></Modal
-    >
+          />
+          {{ preview ? t("Add sample project") : t("Start watching") }}
+        </button>
+      </template>
+    </Modal>
     <Modal
       v-if="plan"
       :title="t('A final look before cleanup')"
@@ -771,43 +821,64 @@ function search() {
       "
       wide
       @close="!busy && (plan = null)"
-      ><div class="notice">
-        <Trash2 :size="19" /><span>{{
-          preview
-            ? t("This is a preview. No real files will be moved.")
-            : t(
-                "Selected files will move to system Trash. Restore them there if needed. Moving to Trash does not immediately release disk space.",
-              )
-        }}</span>
+    >
+      <div class="notice">
+        <Trash2 :size="19" />
+        <span>
+          {{
+            preview
+              ? t("This is a preview. No real files will be moved.")
+              : t(
+                  "Selected files will move to system Trash. Restore them there if needed. Moving to Trash does not immediately release disk space.",
+                )
+          }}
+        </span>
       </div>
       <div class="review-files">
-        <div v-for="f in plan.items" :key="f.id" class="review-file">
+        <div
+          v-for="f in plan.items"
+          :key="f.id"
+          class="review-file"
+        >
           <span class="file-kind"><Folder :size="17" /></span>
           <div>
-            <strong>{{ f.relativePath }}</strong><span>{{
-              compactPath(f.path)
-            }}</span
-            ><small>{{ t(f.reason) }}</small>
+            <strong>{{ f.relativePath }}</strong>
+            <span>{{ compactPath(f.path) }}</span>
+            <small>{{ t(f.reason) }}</small>
           </div>
           <b>{{ bytes(f.size) }}</b>
         </div>
       </div>
       <div class="review-total">
-        <span>{{ t("Total selected") }}</span><strong>{{
-          bytes(plan.total)
-        }}</strong>
+        <span>{{ t("Total selected") }}</span>
+        <strong>{{ bytes(plan.total) }}</strong>
       </div>
-      <template #footer
-        ><button class="button secondary" :disabled="busy" @click="plan = null">
-          {{ t("Keep files") }}</button
-        ><button class="button primary" :disabled="busy" @click="cleanup">
-          <LoaderCircle v-if="busy" :size="15" class="spin" /><Trash2
+      <template #footer>
+        <button
+          class="button secondary"
+          :disabled="busy"
+          @click="plan = null"
+        >
+          {{ t("Keep files") }}
+        </button>
+        <button
+          class="button primary"
+          :disabled="busy"
+          @click="cleanup"
+        >
+          <LoaderCircle
+            v-if="busy"
+            :size="15"
+            class="spin"
+          />
+          <Trash2
             v-else
             :size="15"
-          />{{ preview ? t("Run preview cleanup") : t("Move to Trash") }}
-        </button></template
-      ></Modal
-    >
+          />
+          {{ preview ? t("Run preview cleanup") : t("Move to Trash") }}
+        </button>
+      </template>
+    </Modal>
     <AdoptAgentDialog
       v-if="adoptOpen"
       @close="adoptOpen = false"
@@ -827,17 +898,16 @@ function search() {
       v-if="stopping"
       :title="t('Stop {0}?', stopping.name)"
       @close="!busy && (stopping = null)"
-      ><div class="process-confirm">
+    >
+      <div class="process-confirm">
         <Terminal :size="26" />
         <div>
-          <strong>{{ stopping.name }}</strong><span
-            >PID {{ stopping.pid }} ·
-            {{ AGENT_META[stopping.agent]?.name }}</span
-          >
+          <strong>{{ stopping.name }}</strong>
+          <span>PID {{ stopping.pid }} · {{ AGENT_META[stopping.agent]?.name }}</span>
         </div>
-        <Badge :tone="stopping.orphan ? 'amber' : 'neutral'">{{
-          stopping.orphan ? t("Parent exited") : t("Running")
-        }}</Badge>
+        <Badge :tone="stopping.orphan ? 'amber' : 'neutral'">
+          {{ stopping.orphan ? t("Parent exited") : t("Running") }}
+        </Badge>
       </div>
       <div class="stop-purpose">
         <strong>{{ purposeLabel(stopping.purpose) }}</strong>
@@ -859,47 +929,65 @@ function search() {
         </div>
       </dl>
       <div class="notice amber">
-        <TriangleAlert :size="18" /><span>{{
-          preview
-            ? t("Preview only. No real process will be stopped.")
-            : t(
-                "Unsaved work or a running task may be interrupted. macOS/Linux send SIGTERM; Windows requests process termination.",
-              )
-        }}</span>
+        <TriangleAlert :size="18" />
+        <span>
+          {{
+            preview
+              ? t("Preview only. No real process will be stopped.")
+              : t(
+                  "Unsaved work or a running task may be interrupted. macOS/Linux send SIGTERM; Windows requests process termination.",
+                )
+          }}
+        </span>
       </div>
-      <template #footer
-        ><button
+      <template #footer>
+        <button
           class="button secondary"
           :disabled="busy"
           @click="stopping = null"
         >
-          {{ t("Keep running") }}</button
-        ><button class="button danger" :disabled="busy" @click="stop">
-          <LoaderCircle v-if="busy" :size="15" class="spin" />{{
-            preview ? t("Stop sample process") : t("Stop process")
-          }}
-        </button></template
-      ></Modal
+          {{ t("Keep running") }}
+        </button>
+        <button
+          class="button danger"
+          :disabled="busy"
+          @click="stop"
+        >
+          <LoaderCircle
+            v-if="busy"
+            :size="15"
+            class="spin"
+          />
+          {{ preview ? t("Stop sample process") : t("Stop process") }}
+        </button>
+      </template>
+    </Modal>
+    <Modal
+      v-if="result"
+      :title="t('Cleanup results')"
+      @close="result = null"
     >
-    <Modal v-if="result" :title="t('Cleanup results')" @close="result = null"
-      ><div class="cleanup-result">
+      <div class="cleanup-result">
         <span><Check :size="30" /></span>
         <h2>{{ bytes(result.bytes) }}</h2>
         <p>
           {{ result.succeeded }}
-          {{
-            preview ? t("sample files cleaned up") : t("files moved to Trash")
-          }}
+          {{ preview ? t("sample files cleaned up") : t("files moved to Trash") }}
         </p>
       </div>
-      <div v-if="result.failures.length" class="notice amber">
+      <div
+        v-if="result.failures.length"
+        class="notice amber"
+      >
         <TriangleAlert :size="18" />
         <div>
-          <strong
-            >{{ result.failures.length }}
-            {{ t("files could not be moved") }}</strong
+          <strong>{{ result.failures.length }} {{ t("files could not be moved") }}</strong>
+          <p
+            v-for="failure in result.failures"
+            :key="failure"
           >
-          <p v-for="failure in result.failures" :key="failure">{{ failure }}</p>
+            {{ failure }}
+          </p>
         </div>
       </div>
       <p class="result-help">
@@ -911,25 +999,36 @@ function search() {
               )
         }}
       </p>
-      <template #footer
-        ><button
+      <template #footer>
+        <button
           class="button secondary"
           @click="
             result = null;
             navigate('Activity');
           "
         >
-          {{ t("View activity") }}</button
-        ><button class="button primary" @click="result = null">
-          {{ t("All done") }}<Check :size="14" /></button></template
-    ></Modal>
+          {{ t("View activity") }}
+        </button>
+        <button
+          class="button primary"
+          @click="result = null"
+        >
+          {{ t("All done") }}
+          <Check :size="14" />
+        </button>
+      </template>
+    </Modal>
     <Modal
       v-if="about"
       :title="t('A little more about AgentLens')"
       :subtitle="t('Your agents, in focus. Version 0.1.0')"
       @close="about = false"
-      ><div class="about-logo">
-        <img src="/icon.svg" alt="AgentLens" />
+    >
+      <div class="about-logo">
+        <img
+          src="/icon.svg"
+          alt="AgentLens"
+        />
         <div>
           <strong>{{ t("Built to keep your workspace light.") }}</strong>
           <p>{{ t("Tauri 2 + Vue 3 + TypeScript + Rust") }}</p>
@@ -943,33 +1042,59 @@ function search() {
         }}
       </p>
       <div class="notice">
-        <ShieldCheck :size="18" /><span>{{
-          preview
-            ? t(
-                "Browser preview uses a sample workspace. Launch the desktop app to monitor this computer.",
-              )
-            : t(
-                "Monitoring runs locally. Close the window to keep watching from the system tray; use Quit AgentLens in the tray menu to exit.",
-              )
-        }}</span>
+        <ShieldCheck :size="18" />
+        <span>
+          {{
+            preview
+              ? t(
+                  "Browser preview uses a sample workspace. Launch the desktop app to monitor this computer.",
+                )
+              : t(
+                  "Monitoring runs locally. Close the window to keep watching from the system tray; use Quit AgentLens in the tray menu to exit.",
+                )
+          }}
+        </span>
       </div>
-      <div v-if="data.warnings.length" class="diagnostic-list">
+      <div
+        v-if="data.warnings.length"
+        class="diagnostic-list"
+      >
         <h3>{{ t("Collection notes") }}</h3>
-        <p v-for="w in data.warnings" :key="w">{{ w }}</p>
+        <p
+          v-for="w in data.warnings"
+          :key="w"
+        >
+          {{ w }}
+        </p>
       </div>
-      <template #footer
-        ><button class="button primary" @click="about = false">
+      <template #footer>
+        <button
+          class="button primary"
+          @click="about = false"
+        >
           {{ t("Got it") }}
-        </button></template
-      ></Modal
-    >
+        </button>
+      </template>
+    </Modal>
   </div>
-  <div v-else class="startup">
-    <img src="/icon.svg" alt="AgentLens" />
+  <div
+    v-else
+    class="startup"
+  >
+    <img
+      src="/icon.svg"
+      alt="AgentLens"
+    />
     <h1>AgentLens</h1>
     <p>{{ error || t("Bringing your workspace into focus…") }}</p>
-    <button v-if="error" class="button secondary" @click="reload">
-      {{ t("Try again") }}</button><LoaderCircle
+    <button
+      v-if="error"
+      class="button secondary"
+      @click="reload"
+    >
+      {{ t("Try again") }}
+    </button>
+    <LoaderCircle
       v-else
       :size="22"
       class="spin"

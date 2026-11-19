@@ -30,9 +30,7 @@ describe("batch process termination", () => {
   it("reports rejected identities and protected processes while continuing other requests", async () => {
     invoke
       .mockRejectedValueOnce("Process exited or its identity changed")
-      .mockRejectedValueOnce(
-        "Cannot stop AgentLens or a process that launched it",
-      )
+      .mockRejectedValueOnce("Cannot stop AgentLens or a process that launched it")
       .mockResolvedValueOnce(undefined);
     const stale = process(20, null, 100),
       protectedProcess = process(21, null),

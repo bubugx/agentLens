@@ -1,15 +1,43 @@
 import { t } from "./i18n";
 import type { Process } from "./types";
 
-export const processKey = (process: Process) =>
-  `${process.pid}:${process.startTime}`;
-export function assessmentCategory(p: Process) {
-  return (
-    p.assessment?.category ||
-    (p.recommendation === "review" || p.purpose === "unknown"
-      ? "review"
-      : "keep")
+export const processKey = (process: Process) => `${process.pid}:${process.startTime}`;
+export const processCategories = [
+  "suggested",
+  "active",
+  "keep",
+  "observing",
+  "review",
+  "protected",
+] as const;
+export type ProcessCategory = (typeof processCategories)[number];
+export function assessmentCategory(p: Process): ProcessCategory {
+  const category = p.assessment?.category;
+  if (processCategories.includes(category as ProcessCategory)) return category as ProcessCategory;
+  if (category || p.recommendation === "review" || p.purpose === "unknown") return "review";
+  return "keep";
+}
+export function assessmentLabel(category: ProcessCategory) {
+  return t(
+    {
+      suggested: "Suggested cleanup",
+      active: "Still working",
+      keep: "Idle / retained",
+      observing: "Still observing",
+      review: "Needs further review",
+      protected: "Excluded",
+    }[category],
   );
+}
+export function assessmentTone(category: ProcessCategory) {
+  return {
+    suggested: "amber",
+    active: "green",
+    keep: "neutral",
+    observing: "blue",
+    review: "amber",
+    protected: "neutral",
+  }[category];
 }
 export function assessmentReason(p: Process) {
   const reason = p.assessment?.reason || "";
@@ -22,16 +50,15 @@ export function assessmentReason(p: Process) {
     (
       {
         monitor_ancestor: "AgentLens launch chain · excluded from suggestions",
-        resource_activity:
-          "CPU, memory or disk activity is still being observed",
+        resource_activity: "CPU, memory or disk activity is still being observed",
         check_task: "Resource or purpose signals need review",
-        attached_task: "Connected task or application component",
-        service_or_unknown:
-          "Service, watch task or uncertain purpose · manual review",
-        insufficient_evidence:
-          "More continuous observations or readable disk counters are needed",
-        observing_idle:
-          "Observing whether the orphan stays idle for at least 5 minutes",
+        attached_task:
+          "Parent chain is connected · retain this waiting task or application component",
+        persistent_service:
+          "Persistent service or watch task · low CPU alone does not mean it is unused",
+        service_or_unknown: "Service, watch task or uncertain purpose · manual review",
+        insufficient_evidence: "More continuous observations or readable disk counters are needed",
+        observing_idle: "Observing whether the orphan stays idle for at least 5 minutes",
         process_state: "Process state requires manual review",
         dependent_process: "A descendant still needs to run or be reviewed",
       } as Record<string, string>
@@ -42,9 +69,7 @@ export function assessmentReason(p: Process) {
 // Stop selected children before their selected parents so attribution is still
 // available when the native command rechecks each process identity.
 export function orderProcessStops(processes: Process[]): Process[] {
-  const unique = [
-    ...new Map(processes.map((p) => [processKey(p), p])).values(),
-  ];
+  const unique = [...new Map(processes.map((p) => [processKey(p), p])).values()];
   const ordered: Process[] = [];
   const visited = new Set<string>();
   function visit(process: Process) {
@@ -52,11 +77,7 @@ export function orderProcessStops(processes: Process[]): Process[] {
     if (visited.has(key)) return;
     visited.add(key);
     for (const child of unique)
-      if (
-        child.parentPid === process.pid &&
-        child.startTime >= process.startTime
-      )
-        visit(child);
+      if (child.parentPid === process.pid && child.startTime >= process.startTime) visit(child);
     ordered.push(process);
   }
   unique.forEach(visit);

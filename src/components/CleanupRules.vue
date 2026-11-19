@@ -8,8 +8,7 @@ import ContextHelp from "./ContextHelp.vue";
 import { Check, X, Plus, RotateCcw } from "lucide-vue-next";
 const props = defineProps<{ settings: Settings }>();
 const emit = defineEmits<{ update: [settings: Settings] }>();
-const clone = (p: CleanupPolicy): CleanupPolicy =>
-  JSON.parse(JSON.stringify(p));
+const clone = (p: CleanupPolicy): CleanupPolicy => JSON.parse(JSON.stringify(p));
 const draft = ref(clone(props.settings.cleanup)),
   path = ref(""),
   pathError = ref("");
@@ -52,8 +51,7 @@ const categories = computed(() => [
     key: "temporaryEnabled" as const,
     days: "temporaryHours" as const,
     label: "Temporary files",
-    detail:
-      "Recognized temporary directories; excludes source and configuration.",
+    detail: "Recognized temporary directories; excludes source and configuration.",
     options: [1, 6, 12, 24, 72, 168, 720],
     unit: "{0} hours",
   },
@@ -85,10 +83,7 @@ const categories = computed(() => [
 ]);
 function addPath() {
   const value = path.value.trim();
-  if (
-    !/^(\/|[a-zA-Z]:[\\/])/.test(value) ||
-    value.split(/[\\/]/).includes("..")
-  ) {
+  if (!/^(\/|[a-zA-Z]:[\\/])/.test(value) || value.split(/[\\/]/).includes("..")) {
     pathError.value = t("Enter an absolute path without parent traversal.");
     return;
   }
@@ -106,8 +101,7 @@ function toggleAgent(id: string) {
   );
 }
 function apply() {
-  if (dirty.value)
-    emit("update", { ...props.settings, cleanup: clone(draft.value) });
+  if (dirty.value) emit("update", { ...props.settings, cleanup: clone(draft.value) });
 }
 </script>
 <template>
@@ -134,10 +128,11 @@ function apply() {
         class="cleanup-rule-card"
       >
         <div class="cleanup-rule-title">
-          <strong>{{ t(category.label) }}</strong><ContextHelp
-            :label="t(category.label)"
-            ><p>{{ t(category.detail) }}</p></ContextHelp
-          ><button
+          <strong>{{ t(category.label) }}</strong>
+          <ContextHelp :label="t(category.label)">
+            <p>{{ t(category.detail) }}</p>
+          </ContextHelp>
+          <button
             role="switch"
             :aria-label="t(category.label)"
             :aria-checked="draft[category.key]"
@@ -151,7 +146,8 @@ function apply() {
           class="cleanup-rule-retention"
           :class="{ inactive: !draft[category.key] }"
         >
-          <span>{{ t("Keep at least") }}</span><UiSelect
+          <span>{{ t("Keep at least") }}</span>
+          <UiSelect
             :model-value="draft[category.days]"
             :label="t(category.label) + ' · ' + t('Retention')"
             :options="
@@ -170,11 +166,7 @@ function apply() {
         <div>
           <h3>{{ t("Conversation history") }}</h3>
           <p>
-            {{
-              t(
-                "When enabled, old conversation files can become cleanup candidates.",
-              )
-            }}
+            {{ t("When enabled, old conversation files can become cleanup candidates.") }}
           </p>
         </div>
         <button
@@ -191,9 +183,9 @@ function apply() {
         class="session-policy-fields"
         :class="{ inactive: !draft.includeSessions }"
       >
-        <label
-          ><span>{{ t("Session history retention") }}</span
-          ><UiSelect
+        <label>
+          <span>{{ t("Session history retention") }}</span>
+          <UiSelect
             :model-value="draft.sessionDays"
             :label="t('Session history retention')"
             :options="
@@ -203,10 +195,11 @@ function apply() {
               }))
             "
             @update:model-value="update('sessionDays', $event)"
-        /></label>
-        <label
-          ><span>{{ t("Session scope") }}</span
-          ><UiSelect
+          />
+        </label>
+        <label>
+          <span>{{ t("Session scope") }}</span>
+          <UiSelect
             :model-value="draft.sessionScope"
             :label="t('Session scope')"
             :options="[
@@ -214,10 +207,11 @@ function apply() {
               { value: 'archived', label: t('Archived sessions only') },
             ]"
             @update:model-value="update('sessionScope', $event)"
-        /></label>
-        <label
-          ><span>{{ t("Always keep newest") }}</span
-          ><UiSelect
+          />
+        </label>
+        <label>
+          <span>{{ t("Always keep newest") }}</span>
+          <UiSelect
             :model-value="draft.keepLatestSessions"
             :label="t('Newest sessions to retain')"
             :options="
@@ -227,17 +221,14 @@ function apply() {
               }))
             "
             @update:model-value="update('keepLatestSessions', $event)"
-        /></label>
+          />
+        </label>
       </div>
       <div class="project-session-rule">
         <div>
           <strong>{{ t("Include session histories inside projects") }}</strong>
           <p>
-            {{
-              t(
-                "Only recognized .codex / .claude conversation files are included.",
-              )
-            }}
+            {{ t("Only recognized .codex / .claude conversation files are included.") }}
           </p>
         </div>
         <button
@@ -245,9 +236,7 @@ function apply() {
           :aria-label="t('Include session histories inside projects')"
           :aria-checked="draft.includeProjectSessions"
           :class="['toggle', { checked: draft.includeProjectSessions }]"
-          @click="
-            update('includeProjectSessions', !draft.includeProjectSessions)
-          "
+          @click="update('includeProjectSessions', !draft.includeProjectSessions)"
         >
           <span />
         </button>
@@ -261,22 +250,22 @@ function apply() {
           v-for="(meta, id) in AGENT_META"
           v-show="id !== 'unknown' && meta.enabled !== false"
           :key="id"
-          :class="[
-            'agent-rule-chip',
-            { selected: !draft.excludedAgents.includes(id) },
-          ]"
+          :class="['agent-rule-chip', { selected: !draft.excludedAgents.includes(id) }]"
           :aria-pressed="!draft.excludedAgents.includes(id)"
           @click="toggleAgent(id)"
         >
-          <span class="rule-check"
-            ><Check
+          <span class="rule-check">
+            <Check
               v-if="!draft.excludedAgents.includes(id)"
-              :size="12" /></span
-          >{{ meta.name }}
+              :size="12"
+            />
+          </span>
+          {{ meta.name }}
         </button>
       </div>
       <div class="rule-minimum">
-        <span>{{ t("Minimum candidate size") }}</span><UiSelect
+        <span>{{ t("Minimum candidate size") }}</span>
+        <UiSelect
           :model-value="draft.minimumSizeMb"
           :label="t('Minimum candidate size')"
           :options="
@@ -292,19 +281,28 @@ function apply() {
       <p class="cleanup-section-description">
         {{ t("Excluded paths and their contents are always kept.") }}
       </p>
-      <form class="rule-path-entry" @submit.prevent="addPath">
+      <form
+        class="rule-path-entry"
+        @submit.prevent="addPath"
+      >
         <input
           v-model="path"
           :aria-label="t('Excluded cleanup path')"
           :placeholder="t('Absolute path to keep…')"
-        /><button
+        />
+        <button
           class="button secondary"
           :disabled="!path.trim() || draft.excludedPaths.length >= 100"
         >
-          <Plus :size="14" />{{ t("Exclude path") }}
+          <Plus :size="14" />
+          {{ t("Exclude path") }}
         </button>
       </form>
-      <p v-if="pathError" class="rule-path-error" role="alert">
+      <p
+        v-if="pathError"
+        class="rule-path-error"
+        role="alert"
+      >
         {{ pathError }}
       </p>
       <div
@@ -312,7 +310,8 @@ function apply() {
         :key="item"
         class="rule-excluded-path"
       >
-        <code>{{ item }}</code><button
+        <code>{{ item }}</code>
+        <button
           class="icon-button"
           :aria-label="t('Remove exclusion {0}', item)"
           @click="
@@ -327,18 +326,23 @@ function apply() {
       </div>
     </div>
     <div class="cleanup-rules-save">
-      <span role="status">{{
-        dirty ? t("Unapplied changes") : t("Rules are up to date")
-      }}</span>
+      <span role="status">{{ dirty ? t("Unapplied changes") : t("Rules are up to date") }}</span>
       <div class="inline-controls">
         <button
           class="button secondary small"
           :disabled="!dirty"
           @click="draft = clone(settings.cleanup)"
         >
-          <RotateCcw :size="13" />{{ t("Reset changes") }}</button
-        ><button class="button primary small" :disabled="!dirty" @click="apply">
-          <Check :size="14" />{{ t("Apply cleanup rules") }}
+          <RotateCcw :size="13" />
+          {{ t("Reset changes") }}
+        </button>
+        <button
+          class="button primary small"
+          :disabled="!dirty"
+          @click="apply"
+        >
+          <Check :size="14" />
+          {{ t("Apply cleanup rules") }}
         </button>
       </div>
     </div>

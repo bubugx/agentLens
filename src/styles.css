@@ -1,7 +1,6 @@
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Arial,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Arial, sans-serif;
   color: var(--text);
   background: var(--surface);
   font-synthesis: none;
@@ -718,7 +717,7 @@ nav {
   gap: 4px;
   flex-shrink: 0;
 }
-.agent-mini-stack > .agent-icon {
+.agent-mini-stack > .agent-icon.small {
   width: 20px;
   height: 20px;
   border-radius: 5px;
@@ -3272,8 +3271,7 @@ html.native-host body {
   background: transparent;
 }
 .app-shell {
-  background:
-    radial-gradient(ellipse at 5% 0%, #b3d2f02b, transparent 45%), var(--canvas);
+  background: radial-gradient(ellipse at 5% 0%, #b3d2f02b, transparent 45%), var(--canvas);
 }
 .sidebar {
   background: var(--glass-bg);
@@ -3575,6 +3573,10 @@ input::placeholder {
 .badge.purple {
   color: #7970a3;
   background: #8e84ba12;
+}
+.badge.blue {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
 }
 .section-heading {
   padding: 20px 21px 17px;
@@ -4832,13 +4834,11 @@ input {
   background: #c69a44;
 }
 .app-shell {
-  background:
-    radial-gradient(ellipse at 0 0, #b8d1ec2b, transparent 40%), var(--canvas);
+  background: radial-gradient(ellipse at 0 0, #b8d1ec2b, transparent 40%), var(--canvas);
 }
 [data-color-scheme="light"] .main-layout,
 [data-color-scheme="light"] .native-app .main-layout {
-  background:
-    radial-gradient(ellipse at 90% 0, #dce8f12b, transparent 45%), var(--canvas);
+  background: radial-gradient(ellipse at 90% 0, #dce8f12b, transparent 45%), var(--canvas);
 }
 [data-color-scheme="light"] .sidebar {
   background: linear-gradient(140deg, #f4f9ffc9, #eef4f9b3);
@@ -4945,6 +4945,9 @@ html[lang="en-US"] .heading-dot {
 .cleanup-diagnostics,
 .cleanup-rules {
   margin-bottom: 20px;
+}
+.settings-layout > .cleanup-rules {
+  margin-bottom: 0;
 }
 .cleanup-diagnostics .section-heading h2 {
   display: flex;
@@ -5120,6 +5123,13 @@ html[lang="en-US"] .heading-dot {
 }
 .process-selection-summary > span {
   color: var(--muted);
+}
+.process-monitoring-hint {
+  margin: 0;
+  padding: 0 20px 14px;
+  color: var(--secondary);
+  font-size: 11px;
+  line-height: 1.7;
 }
 .process-selection-bar > .inline-controls {
   margin-left: auto;
@@ -6995,9 +7005,7 @@ html[lang="en-US"] .heading-dot {
 :root[data-color-scheme="dark"] .ui-tabs.ui-tabs {
   background: #09132165;
 }
-:root[data-color-scheme="dark"]
-  .ui-tabs.ui-tabs
-  > button[aria-selected="true"] {
+:root[data-color-scheme="dark"] .ui-tabs.ui-tabs > button[aria-selected="true"] {
   background: #3b4e63;
   box-shadow: 0 1px 4px #0003;
 }
@@ -7226,95 +7234,6 @@ html[lang="en-US"] .heading-dot {
 }
 .resource-strip + .process-analytics {
   margin-top: 20px;
-}
-.resource-strip + .process-triage {
-  margin-top: 20px;
-}
-.process-triage {
-  margin-bottom: 20px;
-}
-.process-triage .section-heading {
-  flex-wrap: wrap;
-  gap: 14px;
-}
-.process-triage h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.process-triage h2 > svg {
-  color: var(--accent);
-}
-.process-triage .section-heading p {
-  margin-top: 7px;
-  color: var(--secondary);
-  font-size: 11px;
-}
-.triage-statistics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  padding: 0 22px 16px;
-}
-.triage-statistics > div {
-  min-width: 0;
-}
-.triage-statistics span {
-  display: block;
-  color: var(--secondary);
-  font-size: 11px;
-}
-.triage-statistics strong {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 22px;
-  font-weight: 500;
-  margin-top: 8px;
-  font-variant-numeric: tabular-nums;
-}
-.triage-statistics small {
-  font-size: 10px;
-  color: var(--secondary);
-  font-weight: 400;
-}
-.triage-policy {
-  padding: 0 22px 18px;
-  font-size: 10px;
-  color: var(--secondary);
-  line-height: 1.8;
-}
-.triage-projects {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 22px 14px;
-}
-.triage-project {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 8px 10px;
-  color: var(--accent);
-  background: var(--surface-muted);
-  font-size: 11px;
-  max-width: 100%;
-}
-.triage-project > span {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.triage-project > small {
-  color: var(--secondary);
-  white-space: nowrap;
-}
-.triage-project:hover {
-  border-color: var(--accent);
 }
 .process-analysis-reason {
   display: block;

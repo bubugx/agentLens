@@ -4,9 +4,7 @@ test("floating messages preserve layout, pause while being used, and support act
   page,
 }) => {
   await page.clock.install();
-  await page.addInitScript(() =>
-    localStorage.setItem("agentlens.locale", "en-US"),
-  );
+  await page.addInitScript(() => localStorage.setItem("agentlens.locale", "en-US"));
   let notificationModule = "";
   page.on("request", (request) => {
     if (new URL(request.url()).pathname === "/src/lib/notifications.ts")

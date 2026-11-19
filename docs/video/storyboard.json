@@ -1,5 +1,6 @@
 {
-  "title": "AgentLens · 让 AI 开发的资源消耗清晰可见",
+  "title": "AgentLens · 为每一份占用，找到归属",
+  "concept": "连续镜头：资源碎片穿过镜头，形成归属轨道；任务信号被观测，文件在保护与清理之间分流。真实界面嵌入同一空间。",
   "voice": "zh-CN-YunxiNeural",
   "rate": "+60%",
   "fps": 30,
@@ -7,67 +8,46 @@
   "height": 1080,
   "scenes": [
     {
-      "id": "problem",
-      "chapter": "WHY / 为什么",
-      "title": "代码在生成，\n资源也在累积。",
-      "narration": "多个 AI 编码工具同时运行，缓存、会话和后台进程不断累积。磁盘为什么变满？内存被谁占用？哪些文件可以清理？",
-      "voiceDuration": 7.87
+      "id": "drift",
+      "title": "它们还在占用。",
+      "narration": "任务结束了，资源却不一定离场。多个 AI 工具一起工作，缓存越积越多，后台进程仍在运行。你看到的是占用数字，却不知道它们属于谁。",
+      "voiceDuration": 8.16
     },
     {
-      "id": "intro",
-      "chapter": "INTRODUCING / 工具定位",
-      "title": "AgentLens",
-      "narration": "AgentLens，是一个本地运行的 AI Agent 资源监测与清理工作台。识别 Codex、Claude Code、Cursor 等六类工具，让信息汇聚一处。",
-      "voiceDuration": 7.61
+      "id": "focus",
+      "title": "让占用，有归属。",
+      "narration": "让 AgentLens 把镜头对准它们。磁盘、内存、CPU 汇聚到一处，按工具看分布，沿项目和目录找到来源。首次扫描，建立你的资源地图。",
+      "voiceDuration": 8.52
     },
     {
-      "id": "overview",
-      "chapter": "01 / 看见全貌",
-      "title": "从分散占用，\n到一眼看清。",
-      "narration": "打开总览，磁盘、内存、CPU 和活跃工具一目了然。趋势与活动记录帮你发现持续增长；菜单栏速览，让你在开发时也能掌握变化。",
-      "voiceDuration": 8.35
+      "id": "observe",
+      "title": "从信号，读懂任务。",
+      "narration": "进程也有上下文。正在工作的继续运行，常驻服务明确保留，证据不足的自动继续观测。遗留构建和测试，经过持续空闲核验，才会成为建议处理的任务。",
+      "voiceDuration": 9.12
     },
     {
-      "id": "trace",
-      "chapter": "02 / 找到来源",
-      "title": "每一份占用，\n都有追踪线索。",
-      "narration": "自动发现用户目录中的项目，结合已知路径、会话工作目录和进程关系建立索引。按工具、项目和目录下钻，查找大文件，查看保留或可清理的原因。",
-      "voiceDuration": 8.83
+      "id": "connect",
+      "title": "没有 CLI，也能接入。",
+      "narration": "你的工具，也可以加入。像 Lumo 这样的桌面应用，不需要命令行入口。选择运行进程或填写应用可执行文件，绑定目录，预览范围，纳入同一张资源地图。",
+      "voiceDuration": 9.19
     },
     {
-      "id": "process",
-      "chapter": "03 / 理解进程",
-      "title": "看懂进程，\n再决定行动。",
-      "narration": "面对异常进程，先查看用途、识别依据、工作目录和资源变化，再决定是否停止。执行前重新核对进程身份，帮助检查遗留任务，减少误操作。",
-      "voiceDuration": 8.81
+      "id": "sort",
+      "title": "该留的，稳稳留住。",
+      "narration": "清理从判断开始。会话、源码和重要配置默认保护；超过保留期的缓存与日志，还要通过稳定性和运行状态检查。没有候选，直接告诉你为什么；工具退出后自动重新评估。",
+      "voiceDuration": 10.75
     },
     {
-      "id": "architecture",
-      "chapter": "UNDER THE HOOD / 如何实现",
-      "title": "界面、采集、历史，\n各司其职。",
-      "narration": "Vue 构建交互，Tauri 连接桌面能力，Rust 负责扫描和采样，SQLite 保存本地索引与历史。文件事件配合周期复核，扫描与采样独立运行。",
-      "voiceDuration": 8.3
+      "id": "act",
+      "title": "确认，再行动。",
+      "narration": "有依据的候选，先预览，再确认，执行前再次复核，文件移入系统垃圾桶。进程停止前，也会核对身份。少一点逐个排查，多一点清楚可靠的决定。",
+      "voiceDuration": 9.17
     },
     {
-      "id": "cleanup",
-      "chapter": "04 / 有依据地清理",
-      "title": "先解释，先复核，\n再移入垃圾桶。",
-      "narration": "超过保留期、稳定未变，所属工具没有运行，文件才可能成为清理候选。确认后再次复核文件身份，再移入系统垃圾桶。清空垃圾桶后，才真正释放磁盘空间。",
-      "voiceDuration": 9.36
-    },
-    {
-      "id": "privacy",
-      "chapter": "LOCAL BY DESIGN / 本地优先",
-      "title": "数据留在本机。\n判断有据可查。",
-      "narration": "无需账号，没有监测数据上传；会话只提取有限元数据，不保存对话内容。让资源可见、来源可查、操作可复核，把开发环境掌握在自己手里。",
-      "voiceDuration": 8.86
-    },
-    {
-      "id": "outro",
-      "chapter": "AGENTLENS / YOUR AGENTS, IN FOCUS.",
-      "title": "让 AI 开发，\n更清晰，也更从容。",
-      "narration": "AgentLens。让 AI 开发的资源消耗，清晰可见。",
-      "voiceDuration": 3.58
+      "id": "return",
+      "title": "Your agents, in focus.",
+      "narration": "趋势、活动和菜单栏速览，让变化持续可见。无需账号，监测数据留在本机。AgentLens，让 AI 开发的资源消耗，清晰可见。",
+      "voiceDuration": 8.26
     }
   ]
 }

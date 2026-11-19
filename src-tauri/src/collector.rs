@@ -149,10 +149,35 @@ pub fn classify(relative: &Path, root: &Root) -> (&'static str, Option<u64>) {
         }
         return ("project", None);
     }
+    let root_parts: Vec<_> = Path::new(&root.path)
+        .components()
+        .map(|p| p.as_os_str().to_string_lossy().to_lowercase())
+        .collect();
+    if parts.iter().chain(root_parts.iter()).any(|part| {
+        part.ends_with(".app")
+            || part.ends_with(".framework")
+            || part.ends_with(".bundle")
+            || part == "org.sparkle-project.sparkle"
+    }) {
+        return ("application", None);
+    }
+    // Structured diagnostic logs use JSONL too. Exact log roots take precedence
+    // over the generic conversation-extension fallback.
+    let root_name = Path::new(&root.path)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_lowercase();
+    let log_scope = root.source == "adopted-logs"
+        || root_name == "logs"
+        || matches!(
+            (root.agent.as_str(), first),
+            ("codex" | "claude", "log" | "logs" | "debug")
+        );
     if matches!(
         first,
         "sessions" | "archived_sessions" | "projects" | "history.jsonl"
-    ) || relative.extension().is_some_and(|x| x == "jsonl")
+    ) || (!log_scope && relative.extension().is_some_and(|x| x == "jsonl"))
     {
         return ("sessions", None);
     }
@@ -175,6 +200,14 @@ pub fn classify(relative: &Path, root: &Root) -> (&'static str, Option<u64>) {
         )
     {
         return ("settings", None);
+    }
+    if log_scope
+        && matches!(
+            relative.extension().and_then(|x| x.to_str()),
+            Some("log" | "jsonl" | "txt")
+        )
+    {
+        return ("logs", Some(7 * 86400));
     }
     if (root.agent == "codex" && first == "shell_snapshots")
         || (root.agent == "claude" && first == "paste-cache")
@@ -968,6 +1001,7 @@ pub fn processes(
                 0
             };
             let orphan = orphan_ids.contains(&pid.as_u32());
+            let disk = crate::process_analysis::disk_counters(pid.as_u32());
             let (recommendation, reason) = if orphan {
                 (
                     "review",
@@ -1018,8 +1052,9 @@ pub fn processes(
                 cpu_delta: prior.map_or(0.0, |old| p.cpu_usage() - old.cpu),
                 high_cpu_samples,
                 observation: ProcessObservation {
-                    disk_read: p.disk_usage().total_read_bytes,
-                    disk_written: p.disk_usage().total_written_bytes,
+                    disk_read: disk.map_or(p.disk_usage().total_read_bytes, |v| v.0),
+                    disk_written: disk.map_or(p.disk_usage().total_written_bytes, |v| v.1),
+                    io_readable: disk.is_some(),
                     watch_mode: args
                         .iter()
                         .any(|a| a == "--watch" || a == "watch" || a.starts_with("--watch=")),
@@ -1057,6 +1092,51 @@ mod tests {
             classify(Path::new("tmp/a.txt"), &r),
             ("temporary", Some(86400))
         );
+    }
+    #[test]
+    fn app_payloads_are_protected_and_structured_logs_keep_their_safety_checks() {
+        let mut r = Root {
+            id: "r".into(),
+            path: "/fixture/cache".into(),
+            agent: "codex".into(),
+            label: "Cache".into(),
+            custom: false,
+            source: "cache".into(),
+        };
+        let policy = CleanupPolicy::default();
+        for path in [
+            "org.sparkle-project.Sparkle/Update/file.bin",
+            "download/Tool.app/Contents/Resources/file.bin",
+            "A.framework/Versions/A/file.bin",
+            "Helper.bundle/file.bin",
+        ] {
+            assert_eq!(classify(Path::new(path), &r), ("application", None));
+            assert_eq!(cleanup_age(Path::new(path), &r, &policy), None);
+        }
+        r.path = "/fixture/Tool.app/Contents/Resources".into();
+        assert_eq!(cleanup_age(Path::new("payload.bin"), &r, &policy), None);
+        r.agent = "lumo".into();
+        r.custom = true;
+        r.source = "adopted-logs".into();
+        r.path = "/fixture/logs".into();
+        assert_eq!(
+            classify(Path::new("events.2026-11-01.jsonl"), &r),
+            ("logs", Some(7 * 86400))
+        );
+        assert_eq!(
+            cleanup_age(Path::new("events.2026-11-01.jsonl"), &r, &policy),
+            Some(policy.log_days * 86400)
+        );
+        for path in [
+            "auth.jsonl",
+            "credentials.txt",
+            "config.json",
+            "state.sqlite",
+            "source.ts",
+            "sessions/history.jsonl",
+        ] {
+            assert_eq!(cleanup_age(Path::new(path), &r, &policy), None, "{path}");
+        }
     }
     #[test]
     fn cleanup_policy_can_include_old_sessions_without_unprotecting_projects() {

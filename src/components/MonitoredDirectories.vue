@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import {
-  ArrowUpRight,
-  FolderSearch,
-  Plus,
-  ScanSearch,
-  Search,
-  X,
-} from "lucide-vue-next";
+import { ArrowUpRight, FolderSearch, Plus, ScanSearch, Search, X } from "lucide-vue-next";
 import { t, rootLabel } from "../lib/i18n";
 import { compactPath, type Root } from "../lib/types";
 import AgentIcon from "./AgentIcon.vue";
@@ -35,25 +28,16 @@ const files = computed(() =>
   props.roots.filter(
     (r) =>
       (scope.value === "all" || (scope.value === "projects") === r.custom) &&
-      `${r.label} ${r.path} ${r.agent}`
-        .toLowerCase()
-        .includes(search.value.toLowerCase()),
+      `${r.label} ${r.path} ${r.agent}`.toLowerCase().includes(search.value.toLowerCase()),
   ),
 );
 const visible = computed(() =>
-  files.value.slice(
-    (page.value - 1) * pageSize.value,
-    page.value * pageSize.value,
-  ),
+  files.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value),
 );
 watch([search, scope, pageSize], () => (page.value = 1));
 watch(
   () => files.value.length,
-  (n) =>
-    (page.value = Math.min(
-      page.value,
-      Math.max(1, Math.ceil(n / pageSize.value)),
-    )),
+  (n) => (page.value = Math.min(page.value, Math.max(1, Math.ceil(n / pageSize.value)))),
 );
 const source = (r: Root) =>
   r.source.startsWith("adopted-")
@@ -88,9 +72,15 @@ const source = (r: Root) =>
           :disabled="scanning || !monitoring"
           @click="$emit('scan')"
         >
-          <ScanSearch :size="14" />{{ t("Scan user space") }}</button
-        ><button class="button secondary small" @click="$emit('add')">
-          <Plus :size="14" />{{ t("Add project") }}
+          <ScanSearch :size="14" />
+          {{ t("Scan user space") }}
+        </button>
+        <button
+          class="button secondary small"
+          @click="$emit('add')"
+        >
+          <Plus :size="14" />
+          {{ t("Add project") }}
         </button>
       </div>
     </div>
@@ -120,23 +110,31 @@ const source = (r: Root) =>
           { value: 'projects', label: t('Project directories') },
         ]"
       />
-      <label class="directory-search"
-        ><Search :size="14" /><input
+      <label class="directory-search">
+        <Search :size="14" />
+        <input
           v-model="search"
           :aria-label="t('Search monitored directories')"
           :placeholder="t('Search directory paths…')"
-      /></label>
+        />
+      </label>
     </div>
     <div class="directory-list">
-      <div v-for="root in visible" :key="root.id" class="directory-row">
-        <AgentIcon :id="root.agent" small /><button
+      <div
+        v-for="root in visible"
+        :key="root.id"
+        class="directory-row"
+      >
+        <AgentIcon
+          :id="root.agent"
+          small
+        />
+        <button
           class="directory-copy"
           @click="$emit('reveal', root.path)"
         >
-          <strong>{{ rootLabel(root.label) }}</strong><span
-            :title="root.path"
-            >{{ compactPath(root.path) }}</span
-          >
+          <strong>{{ rootLabel(root.label) }}</strong>
+          <span :title="root.path">{{ compactPath(root.path) }}</span>
         </button>
         <span class="directory-source">{{ t(source(root)) }}</span>
         <button
@@ -152,8 +150,12 @@ const source = (r: Root) =>
           :aria-label="t('Remove {0}', root.label)"
           @click="$emit('remove', root.id)"
         >
-          <X :size="14" /></button
-        ><span v-else class="directory-action-placeholder" />
+          <X :size="14" />
+        </button>
+        <span
+          v-else
+          class="directory-action-placeholder"
+        />
       </div>
       <EmptyState
         v-if="!visible.length"

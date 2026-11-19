@@ -15,14 +15,12 @@ export function projectFor(
       path: p.projectPath,
       evidence: p.projectEvidence || "working_directory",
     };
-  if (p.projectEvidence === "unassigned")
-    return { path: "", evidence: "unassigned" };
+  if (p.projectEvidence === "unassigned") return { path: "", evidence: "unassigned" };
   const seen = new Set<number>();
   let current: Process | undefined = p;
   while (current && !seen.has(current.pid)) {
     seen.add(current.pid);
-    if (current.projectPath)
-      return { path: current.projectPath, evidence: "parent_process" };
+    if (current.projectPath) return { path: current.projectPath, evidence: "parent_process" };
     const cwd = current.workingDirectory;
     if (
       cwd &&
@@ -34,9 +32,7 @@ export function projectFor(
         .filter(
           (r) =>
             r.custom &&
-            !["adopted-cache", "adopted-logs", "adopted-temporary"].includes(
-              r.source,
-            ) &&
+            !["adopted-cache", "adopted-logs", "adopted-temporary"].includes(r.source) &&
             (cwd === r.path || cwd.startsWith(r.path + "/")),
         )
         .sort((a, b) => b.path.length - a.path.length)[0];
@@ -45,20 +41,14 @@ export function projectFor(
           path: root.path,
           evidence: current === p ? "monitored_directory" : "parent_process",
         };
-      if (
-        !roots.some(
-          (r) => !r.custom && (cwd === r.path || cwd.startsWith(r.path + "/")),
-        )
-      )
+      if (!roots.some((r) => !r.custom && (cwd === r.path || cwd.startsWith(r.path + "/"))))
         return {
           path: cwd,
           evidence: current === p ? "working_directory" : "parent_process",
         };
     }
     const parent = processes.find(
-      (other) =>
-        other.pid === current!.parentPid &&
-        other.startTime <= current!.startTime,
+      (other) => other.pid === current!.parentPid && other.startTime <= current!.startTime,
     );
     current = parent;
   }

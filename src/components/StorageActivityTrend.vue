@@ -10,9 +10,7 @@ const props = defineProps<{
   start: number;
   end: number;
 }>();
-const series = computed(() =>
-  storageSeries(props.history, props.start, props.end, props.events),
-);
+const series = computed(() => storageSeries(props.history, props.start, props.end, props.events));
 const points = computed(() => series.value.points),
   hover = ref<number | null>(null);
 const W = 900,
@@ -46,19 +44,12 @@ const low = computed(() =>
 const startTime = computed(() => points.value[0]?.time || props.start),
   endTime = computed(() => points.value.at(-1)?.time || props.end);
 const x = (time: number) =>
-  L +
-  ((time - startTime.value) / Math.max(1, endTime.value - startTime.value)) *
-    (W - L - R);
+  L + ((time - startTime.value) / Math.max(1, endTime.value - startTime.value)) * (W - L - R);
 const y = (value: number) =>
-  H -
-  B -
-  ((value - low.value) / Math.max(1, high.value - low.value)) * (H - T - B);
+  H - B - ((value - low.value) / Math.max(1, high.value - low.value)) * (H - T - B);
 const line = computed(() =>
   points.value
-    .map(
-      (p, i) =>
-        `${i ? "L" : "M"}${x(p.time).toFixed(2)},${y(p.value).toFixed(2)}`,
-    )
+    .map((p, i) => `${i ? "L" : "M"}${x(p.time).toFixed(2)},${y(p.value).toFixed(2)}`)
     .join(" "),
 );
 const area = computed(() =>
@@ -82,10 +73,7 @@ function move(event: PointerEvent) {
     ((((event.clientX - bounds.left) / bounds.width) * W - L) / (W - L - R)) *
       (endTime.value - startTime.value);
   hover.value = points.value.reduce(
-    (best, p, i) =>
-      Math.abs(p.time - time) < Math.abs(points.value[best].time - time)
-        ? i
-        : best,
+    (best, p, i) => (Math.abs(p.time - time) < Math.abs(points.value[best].time - time) ? i : best),
     0,
   );
 }
@@ -111,11 +99,7 @@ function key(event: KeyboardEvent) {
     <div class="section-heading">
       <div>
         <h2>
-          {{
-            series.mode === "usage"
-              ? t("Storage usage trend")
-              : t("Observed net change trend")
-          }}
+          {{ series.mode === "usage" ? t("Storage usage trend") : t("Observed net change trend") }}
         </h2>
         <p>
           {{
@@ -126,18 +110,22 @@ function key(event: KeyboardEvent) {
         </p>
       </div>
       <div class="activity-trend-total">
-        <strong>{{
-          series.mode === "usage"
-            ? bytes(points.at(-1)?.value || 0)
-            : delta(points.at(-1)?.value || 0)
-        }}</strong
-        ><small v-if="points.length > 1"
-          >{{ t("Range change") }}
-          {{ delta(points.at(-1)!.value - points[0].value) }}</small
-        >
+        <strong>
+          {{
+            series.mode === "usage"
+              ? bytes(points.at(-1)?.value || 0)
+              : delta(points.at(-1)?.value || 0)
+          }}
+        </strong>
+        <small v-if="points.length > 1">
+          {{ t("Range change") }} {{ delta(points.at(-1)!.value - points[0].value) }}
+        </small>
       </div>
     </div>
-    <div v-if="points.length" class="activity-trend-canvas">
+    <div
+      v-if="points.length"
+      class="activity-trend-canvas"
+    >
       <svg
         :viewBox="`0 0 ${W} ${H}`"
         preserveAspectRatio="none"
@@ -149,7 +137,10 @@ function key(event: KeyboardEvent) {
         @keydown="key"
         @blur="hover = null"
       >
-        <g v-for="fraction in [0, 0.5, 1]" :key="fraction">
+        <g
+          v-for="fraction in [0, 0.5, 1]"
+          :key="fraction"
+        >
           <line
             :x1="L"
             :x2="W - R"
@@ -166,8 +157,14 @@ function key(event: KeyboardEvent) {
             {{ bytes(low + fraction * (high - low)) }}
           </text>
         </g>
-        <path :d="area" class="activity-trend-area" />
-        <path :d="line" class="activity-trend-line" />
+        <path
+          :d="area"
+          class="activity-trend-area"
+        />
+        <path
+          :d="line"
+          class="activity-trend-line"
+        />
         <circle
           v-if="points.length === 1"
           :cx="x(points[0].time)"
@@ -201,37 +198,43 @@ function key(event: KeyboardEvent) {
           />
         </g>
       </svg>
-      <div v-if="selected" class="activity-trend-tooltip" role="status">
-        <span>{{ format(selected.time) }}</span
-        ><strong>{{
-          series.mode === "usage"
-            ? bytes(selected.value)
-            : delta(selected.value)
-        }}</strong>
+      <div
+        v-if="selected"
+        class="activity-trend-tooltip"
+        role="status"
+      >
+        <span>{{ format(selected.time) }}</span>
+        <strong>
+          {{ series.mode === "usage" ? bytes(selected.value) : delta(selected.value) }}
+        </strong>
       </div>
     </div>
-    <div v-else class="activity-trend-wait">
-      <TrendingUp :size="24" /><strong>{{
-        t("Waiting for storage samples")
-      }}</strong
-      ><span>{{
-        t(
-          "A trend appears after a completed inventory. Change the time range to inspect older samples.",
-        )
-      }}</span>
+    <div
+      v-else
+      class="activity-trend-wait"
+    >
+      <TrendingUp :size="24" />
+      <strong>{{ t("Waiting for storage samples") }}</strong>
+      <span>
+        {{
+          t(
+            "A trend appears after a completed inventory. Change the time range to inspect older samples.",
+          )
+        }}
+      </span>
     </div>
     <div class="activity-trend-caption">
-      <span
-        ><i />{{
-          series.mode === "usage"
-            ? t("Monitored storage")
-            : t("Observed net change")
-        }}</span
-      ><small>{{
-        points.length === 1
-          ? t("One sample recorded; the next sample will establish a trend.")
-          : t("Hover or use arrow keys to inspect samples.")
-      }}</small>
+      <span>
+        <i />
+        {{ series.mode === "usage" ? t("Monitored storage") : t("Observed net change") }}
+      </span>
+      <small>
+        {{
+          points.length === 1
+            ? t("One sample recorded; the next sample will establish a trend.")
+            : t("Hover or use arrow keys to inspect samples.")
+        }}
+      </small>
     </div>
   </section>
 </template>

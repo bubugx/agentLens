@@ -1,4 +1,4 @@
-import json,re,subprocess,pathlib,imageio_ffmpeg,hashlib
+import json,re,subprocess,pathlib,imageio_ffmpeg,hashlib,datetime
 root=pathlib.Path(__file__).resolve().parents[2];f=root/'docs/media/agentlens-intro-zh.mp4';ff=imageio_ffmpeg.get_ffmpeg_exe()
 probe=subprocess.run([ff,'-hide_banner','-i',str(f)],capture_output=True,text=True).stderr
 assert '1920x1080' in probe and '30 fps' in probe and 'h264' in probe and '48000 Hz, stereo' in probe
@@ -9,6 +9,9 @@ loud=subprocess.run([ff,'-hide_banner','-i',str(f),'-vn','-af','loudnorm=I=-16:T
 measure=json.loads(loud[loud.rfind('{'):loud.rfind('}')+1])
 print('LOUDNESS',measure,flush=True)
 meta=json.loads((root/'docs/media/video-metadata.json').read_text());assert meta['duration']<80
+for scene in meta['scenes']:
+ assert not re.search(r'Vue|Rust|Tauri|SQLite|技术栈',scene['narration'],re.I)
+assert meta['rate']=='+60%'
 srt=(root/'docs/media/agentlens-intro-zh.srt').read_text();items=srt.strip().split('\n\n')
 def sec(s):
  h,m,v=s.replace(',','.').split(':');return int(h)*3600+int(m)*60+float(v)
@@ -24,5 +27,5 @@ for path in [root/'README.md',root/'docs/implementation.md',root/'docs/video/REA
   if not target.exists() and target.resolve()!=(root/'docs/video/validation.json').resolve():missing.append(str(target))
 assert not missing,missing
 record={
- 'checkedDate':'2026-11-18','video':str(f.relative_to(root)), 'durationSeconds':meta['duration'], 'dimensions':'1920x1080','fps':30,'frames':round(meta['duration']*30),'videoCodec':'H.264','pixelFormat':'yuv420p','audioCodec':'AAC','audioRate':48000,'channels':2,'fileBytes':f.stat().st_size,'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'fullDecode':'passed','decodeWarnings':result.stderr.strip(),'subtitleCues':len(items),'subtitleOrderAndBounds':'passed','documentationLocalLinks':'passed','audioIntegratedLufs':float(measure['input_i']),'audioTruePeakDbtp':float(measure['input_tp']),'audioLoudnessRangeLu':float(measure['input_lra']),'visualReview':'Nine-scene contact sheet and full-resolution overview, architecture and cleanup frames inspected.','notes':['Interface values are preview data, visibly disclosed.','Narration uses Edge TTS rate +60%.','No real cleanup or process-stop actions performed for video capture.']}
+ 'checkedDate':datetime.datetime.now(datetime.timezone.utc).isoformat(),'video':str(f.relative_to(root)), 'durationSeconds':meta['duration'], 'dimensions':'1920x1080','fps':30,'frames':round(meta['duration']*30),'videoCodec':'H.264','pixelFormat':'yuv420p','audioCodec':'AAC','audioRate':48000,'channels':2,'fileBytes':f.stat().st_size,'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'fullDecode':'passed','decodeWarnings':result.stderr.strip(),'subtitleCues':len(items),'subtitleOrderAndBounds':'passed','documentationLocalLinks':'passed','audioIntegratedLufs':float(measure['input_i']),'audioTruePeakDbtp':float(measure['input_tp']),'audioLoudnessRangeLu':float(measure['input_lra']),'visualReview':'Seven continuous scenes, resource-object trajectories, actual interface interactions and full-resolution frames inspected.','notes':['Interface values are preview data, visibly disclosed.','Narration uses Edge TTS rate +60%.','No real cleanup or process-stop actions performed for video capture.']}
 (root/'docs/video/validation.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n');print(json.dumps(record,ensure_ascii=False,indent=2))

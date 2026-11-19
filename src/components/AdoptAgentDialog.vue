@@ -49,8 +49,7 @@ const request = ref<AdoptRequest>({
 });
 const selected = computed(() =>
   candidates.value.find(
-    (c) =>
-      c.pid === request.value.pid && c.startTime === request.value.startTime,
+    (c) => c.pid === request.value.pid && c.startTime === request.value.startTime,
   ),
 );
 const filtered = computed(() =>
@@ -67,14 +66,7 @@ const ready = computed(
     request.value.executable &&
     (mode.value === "rule" || selected.value),
 );
-const colors = [
-  "#528f80",
-  "#8584b9",
-  "#167c83",
-  "#b36e46",
-  "#627aaf",
-  "#a85b83",
-];
+const colors = ["#528f80", "#8584b9", "#167c83", "#b36e46", "#627aaf", "#a85b83"];
 watch(query, () => (candidatePage.value = 1));
 async function load() {
   loading.value = true;
@@ -150,9 +142,7 @@ async function preview() {
   busy.value = true;
   error.value = "";
   try {
-    review.value = await client.previewAdoption(
-      JSON.parse(JSON.stringify(request.value)),
-    );
+    review.value = await client.previewAdoption(JSON.parse(JSON.stringify(request.value)));
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -163,10 +153,7 @@ async function confirm() {
   busy.value = true;
   error.value = "";
   try {
-    emit(
-      "adopted",
-      await client.adoptAgent(JSON.parse(JSON.stringify(request.value))),
-    );
+    emit("adopted", await client.adoptAgent(JSON.parse(JSON.stringify(request.value))));
   } catch (e) {
     error.value = String(e);
     review.value = null;
@@ -187,11 +174,7 @@ watch(error, (value) => {
 <template>
   <Modal
     :title="t('Adopt Agent')"
-    :subtitle="
-      t(
-        'Connect any Agent through its running process or an exact recognition rule.',
-      )
-    "
+    :subtitle="t('Connect any Agent through its running process or an exact recognition rule.')"
     wide
     @close="!busy && emit('close')"
   >
@@ -206,18 +189,29 @@ watch(error, (value) => {
           ]"
           @update:model-value="changeMode($event)"
         />
-        <section v-if="mode === 'process'" class="adoption-candidates">
+        <section
+          v-if="mode === 'process'"
+          class="adoption-candidates"
+        >
           <div class="adoption-toolbar">
-            <label class="adoption-search"
-              ><Search :size="15" /><input
+            <label class="adoption-search">
+              <Search :size="15" />
+              <input
                 v-model="query"
                 :placeholder="t('Search process, PID, or executable')"
                 :aria-label="t('Search process, PID, or executable')"
-            /></label>
-            <button class="button" :disabled="loading" @click="load">
-              <RefreshCw :size="15" :class="{ spin: loading }" />{{
-                t("Refresh")
-              }}
+              />
+            </label>
+            <button
+              class="button"
+              :disabled="loading"
+              @click="load"
+            >
+              <RefreshCw
+                :size="15"
+                :class="{ spin: loading }"
+              />
+              {{ t("Refresh") }}
             </button>
           </div>
           <p class="adoption-hint">
@@ -227,10 +221,16 @@ watch(error, (value) => {
               )
             }}
           </p>
-          <div v-if="loading" class="adoption-empty" role="status">
-            <LoaderCircle :size="18" class="spin" />{{
-              t("Loading processes…")
-            }}
+          <div
+            v-if="loading"
+            class="adoption-empty"
+            role="status"
+          >
+            <LoaderCircle
+              :size="18"
+              class="spin"
+            />
+            {{ t("Loading processes…") }}
           </div>
           <div
             v-else
@@ -239,39 +239,46 @@ watch(error, (value) => {
             :aria-label="t('Available processes')"
           >
             <button
-              v-for="c in filtered.slice(
-                (candidatePage - 1) * pageSize,
-                candidatePage * pageSize,
-              )"
+              v-for="c in filtered.slice((candidatePage - 1) * pageSize, candidatePage * pageSize)"
               :key="`${c.pid}:${c.startTime}`"
               :disabled="!!c.agent"
               :class="['adoption-process', { chosen: selected?.pid === c.pid }]"
               :aria-pressed="selected?.pid === c.pid"
               @click="select(c)"
             >
-              <span class="adoption-process-check"
-                ><Check v-if="selected?.pid === c.pid" :size="14" /><Terminal
+              <span class="adoption-process-check">
+                <Check
+                  v-if="selected?.pid === c.pid"
+                  :size="14"
+                />
+                <Terminal
                   v-else
                   :size="15"
-              /></span>
-              <span class="adoption-process-info"
-                ><strong
-                  >{{ c.name }} <small>PID {{ c.pid }}</small></strong
-                ><span :title="c.entrypoint || c.executable">{{
-                  compactPath(c.entrypoint || c.executable)
-                }}</span></span
-              >
-              <span class="adoption-process-metrics"
-                ><small v-if="c.agent"
-                  >{{ AGENT_META[c.agent]?.name || c.agent }} ·
-                  {{ t("Managed") }}</small
-                ><template v-else
-                  ><strong>{{ bytes(c.memory) }}</strong
-                  ><small>CPU {{ c.cpu.toFixed(1) }}%</small></template
-                ></span
-              >
+                />
+              </span>
+              <span class="adoption-process-info">
+                <strong>
+                  {{ c.name }}
+                  <small>PID {{ c.pid }}</small>
+                </strong>
+                <span :title="c.entrypoint || c.executable">
+                  {{ compactPath(c.entrypoint || c.executable) }}
+                </span>
+              </span>
+              <span class="adoption-process-metrics">
+                <small v-if="c.agent">
+                  {{ AGENT_META[c.agent]?.name || c.agent }} · {{ t("Managed") }}
+                </small>
+                <template v-else>
+                  <strong>{{ bytes(c.memory) }}</strong>
+                  <small>CPU {{ c.cpu.toFixed(1) }}%</small>
+                </template>
+              </span>
             </button>
-            <p v-if="!filtered.length" class="adoption-empty">
+            <p
+              v-if="!filtered.length"
+              class="adoption-empty"
+            >
               {{ t("No matching processes") }}
             </p>
           </div>
@@ -289,13 +296,14 @@ watch(error, (value) => {
           />
         </section>
         <div class="adoption-identity">
-          <label class="adoption-field"
-            ><span>{{ t("Agent name") }}</span
-            ><input
+          <label class="adoption-field">
+            <span>{{ t("Agent name") }}</span>
+            <input
               v-model="request.name"
               maxlength="64"
               :placeholder="t('For example, Research Agent')"
-          /></label>
+            />
+          </label>
           <div class="adoption-field">
             <span>{{ t("Color") }}</span>
             <div
@@ -311,24 +319,36 @@ watch(error, (value) => {
                 :aria-pressed="request.color === color"
                 @click="request.color = color"
               >
-                <Check v-if="request.color === color" :size="14" />
+                <Check
+                  v-if="request.color === color"
+                  :size="14"
+                />
               </button>
             </div>
           </div>
         </div>
         <template v-if="mode === 'rule'">
-          <label class="adoption-field"
-            ><span>{{ t("Executable path") }}</span
-            ><input
+          <label class="adoption-field">
+            <span>{{ t("Executable path") }}</span>
+            <input
               v-model="request.executable"
               placeholder="/absolute/path/to/agent"
-          /></label>
-          <label class="adoption-field"
-            ><span>{{ t("Script or module entry point") }}</span
-            ><input
+            />
+          </label>
+          <label class="adoption-field">
+            <span>{{ t("Script or module entry point") }}</span>
+            <input
               v-model="request.entrypoint"
               placeholder="/absolute/path/agent.py · module:my_agent"
-          /></label>
+            />
+          </label>
+          <p class="adoption-hint">
+            {{
+              t(
+                "Desktop apps do not need a CLI. Use the executable inside the app; leave the script entry point empty.",
+              )
+            }}
+          </p>
           <p class="adoption-hint">
             {{
               t(
@@ -337,24 +357,26 @@ watch(error, (value) => {
             }}
           </p>
         </template>
-        <div v-else-if="selected" class="adoption-remember">
+        <div
+          v-else-if="selected"
+          class="adoption-remember"
+        >
           <div>
             <strong>{{ t("Remember recognition rule") }}</strong>
             <p>
               {{
                 selected.canRemember
-                  ? t(
-                      "Automatically adopt future runs with the same executable and entry point.",
-                    )
+                  ? t("Automatically adopt future runs with the same executable and entry point.")
                   : t(
                       "This invocation has no stable script entry point. Adopt this process tree for this app session only.",
                     )
               }}
             </p>
-            <code v-if="request.remember"
-              >{{ compactPath(request.executable)
-              }}<br v-if="request.entrypoint" />{{ request.entrypoint }}</code
-            >
+            <code v-if="request.remember">
+              {{ compactPath(request.executable) }}
+              <br v-if="request.entrypoint" />
+              {{ request.entrypoint }}
+            </code>
           </div>
           <button
             class="toggle"
@@ -387,7 +409,8 @@ watch(error, (value) => {
                 :aria-label="t('Directory path')"
                 :placeholder="t('Directory path')"
                 @keydown.enter.prevent="addDirectory"
-              /><button
+              />
+              <button
                 class="icon-button"
                 :aria-label="t('Choose directory')"
                 @click="browse"
@@ -402,12 +425,11 @@ watch(error, (value) => {
             />
             <button
               class="button"
-              :disabled="
-                !directoryPath.trim() || request.directories.length >= 20
-              "
+              :disabled="!directoryPath.trim() || request.directories.length >= 20"
               @click="addDirectory"
             >
-              <Plus :size="16" />{{ t("Add") }}
+              <Plus :size="16" />
+              {{ t("Add") }}
             </button>
           </div>
           <div
@@ -415,10 +437,9 @@ watch(error, (value) => {
             :key="d.path"
             class="adoption-bound-row"
           >
-            <span :title="d.path">{{ compactPath(d.path) }}</span><small>{{
-              usageOptions.find((o) => o.value === d.usage)?.label
-            }}</small
-            ><button
+            <span :title="d.path">{{ compactPath(d.path) }}</span>
+            <small>{{ usageOptions.find((o) => o.value === d.usage)?.label }}</small>
+            <button
               class="icon-button"
               :aria-label="t('Remove directory')"
               @click="request.directories.splice(i, 1)"
@@ -433,34 +454,28 @@ watch(error, (value) => {
           <span
             class="adoption-avatar"
             :style="{ background: request.color }"
-            >{{ request.name.slice(0, 1).toUpperCase() }}</span
           >
+            {{ request.name.slice(0, 1).toUpperCase() }}
+          </span>
           <div>
             <h3>{{ request.name }}</h3>
             <p>
-              {{
-                request.remember
-                  ? t("Saved recognition rule")
-                  : t("Current app session only")
-              }}
+              {{ request.remember ? t("Saved recognition rule") : t("Current app session only") }}
             </p>
           </div>
         </div>
         <div class="adoption-preview-totals">
           <div>
-            <span>{{ t("Processes") }}</span><strong>{{
-              review.processes.length
-            }}</strong>
+            <span>{{ t("Processes") }}</span>
+            <strong>{{ review.processes.length }}</strong>
           </div>
           <div>
-            <span>{{ t("Memory") }}</span><strong>{{
-              bytes(review.processes.reduce((s, p) => s + p.memory, 0))
-            }}</strong>
+            <span>{{ t("Memory") }}</span>
+            <strong>{{ bytes(review.processes.reduce((s, p) => s + p.memory, 0)) }}</strong>
           </div>
           <div>
-            <span>{{ t("Bound directories") }}</span><strong>{{
-              review.roots.length
-            }}</strong>
+            <span>{{ t("Bound directories") }}</span>
+            <strong>{{ review.roots.length }}</strong>
           </div>
         </div>
         <p class="adoption-hint">
@@ -476,17 +491,18 @@ watch(error, (value) => {
             :key="p.pid"
             class="adoption-review-row"
           >
-            <Terminal :size="16" /><span
-              ><strong>{{ p.name }} · PID {{ p.pid }}</strong
-              ><small>{{ compactPath(p.executable) }}</small></span
-            ><b>{{ bytes(p.memory) }}</b>
+            <Terminal :size="16" />
+            <span>
+              <strong>{{ p.name }} · PID {{ p.pid }}</strong>
+              <small>{{ compactPath(p.executable) }}</small>
+            </span>
+            <b>{{ bytes(p.memory) }}</b>
           </div>
-          <p v-if="!review.processes.length" class="adoption-hint">
-            {{
-              t(
-                "No running matches. The rule will take effect when a matching process starts.",
-              )
-            }}
+          <p
+            v-if="!review.processes.length"
+            class="adoption-hint"
+          >
+            {{ t("No running matches. The rule will take effect when a matching process starts.") }}
           </p>
         </div>
         <div
@@ -494,11 +510,9 @@ watch(error, (value) => {
           :key="root.id"
           class="adoption-bound-row"
         >
-          <FolderOpen :size="15" /><span>{{ compactPath(root.path) }}</span
-          ><small>{{
-            usageOptions.find((o) => `adopted-${o.value}` === root.source)
-              ?.label
-          }}</small>
+          <FolderOpen :size="15" />
+          <span>{{ compactPath(root.path) }}</span>
+          <small>{{ usageOptions.find((o) => `adopted-${o.value}` === root.source)?.label }}</small>
         </div>
         <div class="notice">
           {{
@@ -515,9 +529,11 @@ watch(error, (value) => {
         :disabled="busy"
         @click="review ? (review = null) : emit('close')"
       >
-        <ArrowLeft v-if="review" :size="15" />{{
-          review ? t("Back") : t("Cancel")
-        }}
+        <ArrowLeft
+          v-if="review"
+          :size="15"
+        />
+        {{ review ? t("Back") : t("Cancel") }}
       </button>
       <button
         v-if="!review"
@@ -525,14 +541,25 @@ watch(error, (value) => {
         :disabled="!ready || busy || loading"
         @click="preview"
       >
-        <LoaderCircle v-if="busy" :size="15" class="spin" />{{
-          t("Preview adoption")
-        }}
+        <LoaderCircle
+          v-if="busy"
+          :size="15"
+          class="spin"
+        />
+        {{ t("Preview adoption") }}
       </button>
-      <button v-else class="button primary" :disabled="busy" @click="confirm">
-        <LoaderCircle v-if="busy" :size="15" class="spin" />{{
-          t("Confirm adoption")
-        }}
+      <button
+        v-else
+        class="button primary"
+        :disabled="busy"
+        @click="confirm"
+      >
+        <LoaderCircle
+          v-if="busy"
+          :size="15"
+          class="spin"
+        />
+        {{ t("Confirm adoption") }}
       </button>
     </template>
   </Modal>

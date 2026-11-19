@@ -1,30 +1,24 @@
 <script setup lang="ts">
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-vue-next";
-import {
-  messages,
-  dismissMessage,
-  pauseMessage,
-  resumeMessage,
-} from "../lib/notifications";
+import { messages, dismissMessage, pauseMessage, resumeMessage } from "../lib/notifications";
 import { t } from "../lib/i18n";
 function leave(event: PointerEvent, id: number) {
-  if (!(event.currentTarget as HTMLElement).contains(document.activeElement))
-    resumeMessage(id);
+  if (!(event.currentTarget as HTMLElement).contains(document.activeElement)) resumeMessage(id);
 }
 function blur(event: FocusEvent, id: number) {
   const card = event.currentTarget as HTMLElement;
-  if (
-    !card.contains(event.relatedTarget as Node | null) &&
-    !card.matches(":hover")
-  )
+  if (!card.contains(event.relatedTarget as Node | null) && !card.matches(":hover"))
     resumeMessage(id);
 }
 </script>
 <template>
-  <Teleport to="body"
-    ><div class="notification-stack" :aria-label="t('Notifications')">
-      <TransitionGroup name="message"
-        ><div
+  <Teleport to="body">
+    <div
+      class="notification-stack"
+      :aria-label="t('Notifications')"
+    >
+      <TransitionGroup name="message">
+        <div
           v-for="item in messages"
           :key="item.id"
           :class="['message-notification', item.tone]"
@@ -37,11 +31,7 @@ function blur(event: FocusEvent, id: number) {
         >
           <component
             :is="
-              item.tone === 'success'
-                ? CheckCircle2
-                : item.tone === 'info'
-                  ? Info
-                  : TriangleAlert
+              item.tone === 'success' ? CheckCircle2 : item.tone === 'info' ? Info : TriangleAlert
             "
             :size="18"
           />
@@ -64,7 +54,9 @@ function blur(event: FocusEvent, id: number) {
             @click="dismissMessage(item.id)"
           >
             <X :size="15" />
-          </button></div
-      ></TransitionGroup></div
-  ></Teleport>
+          </button>
+        </div>
+      </TransitionGroup>
+    </div>
+  </Teleport>
 </template>

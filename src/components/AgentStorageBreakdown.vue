@@ -11,14 +11,9 @@ const sorted = computed(() =>
     .sort((a, b) => b.storage - a.storage),
 );
 const total = computed(() => sorted.value.reduce((s, a) => s + a.storage, 0));
-const percent = (size: number) =>
-  total.value > 0 ? (size / total.value) * 100 : 0;
+const percent = (size: number) => (total.value > 0 ? (size / total.value) * 100 : 0);
 const percentText = (size: number) =>
-  size === 0
-    ? "0%"
-    : percent(size) < 0.01
-      ? "<0.01%"
-      : `${percent(size).toFixed(2)}%`;
+  size === 0 ? "0%" : percent(size) < 0.01 ? "<0.01%" : `${percent(size).toFixed(2)}%`;
 </script>
 <template>
   <div
@@ -26,8 +21,8 @@ const percentText = (size: number) =>
     :aria-label="t('Storage distribution by Agent')"
   >
     <div class="agent-storage-heading">
-      <span>{{ t("Storage distribution") }}</span
-      ><small>{{ t("Largest first") }}</small>
+      <span>{{ t("Storage distribution") }}</span>
+      <small>{{ t("Largest first") }}</small>
     </div>
     <button
       v-for="agent in sorted"
@@ -35,21 +30,25 @@ const percentText = (size: number) =>
       class="agent-storage-row"
       @click="$emit('select', agent.id)"
     >
-      <span class="agent-storage-name"
-        ><i
+      <span class="agent-storage-name">
+        <i
           :style="{
             background: AGENT_META[agent.id]?.color || 'var(--accent)',
           }"
-        />{{ t(agent.name) }}</span
-      ><span class="agent-storage-track"
-        ><i
+        />
+        {{ t(agent.name) }}
+      </span>
+      <span class="agent-storage-track">
+        <i
           v-if="agent.storage > 0"
           :style="{
             width: `${percent(agent.storage)}%`,
             background: AGENT_META[agent.id]?.color || 'var(--accent)',
-          }" /></span
-      ><strong>{{ bytes(agent.storage) }}</strong
-      ><small>{{ percentText(agent.storage) }}</small>
+          }"
+        />
+      </span>
+      <strong>{{ bytes(agent.storage) }}</strong>
+      <small>{{ percentText(agent.storage) }}</small>
     </button>
   </div>
 </template>

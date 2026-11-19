@@ -13,7 +13,11 @@
     "test": "vitest run",
     "check": "vue-tsc -b && cargo test --manifest-path src-tauri/Cargo.toml",
     "test:e2e": "playwright test",
-    "probe": "cargo run --manifest-path src-tauri/Cargo.toml --bin agentlens-probe --"
+    "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+    "probe": "cargo run --manifest-path src-tauri/Cargo.toml --bin agentlens-probe --",
+    "version:check": "node scripts/version.mjs --check",
+    "version:set": "node scripts/version.mjs --set"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",

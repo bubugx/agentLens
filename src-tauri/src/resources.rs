@@ -109,7 +109,29 @@ pub fn aggregate(
 
 #[cfg(test)]
 pub fn fixture(pid: u32, parent: Option<u32>, start: u64, cwd: &str) -> ProcessEntry {
-    serde_json::from_value(serde_json::json!({"pid":pid,"parentPid":parent,"startTime":start,"name":"fixture","agent":"codex","memory":100,"cpu":2.5,"status":"Run","evidence":"Observed parent process chain","orphan":false,"executable":"/fixture/agent","purpose":"agent","purposeEvidence":"fixture","recommendation":"keep","recommendationReason":"fixture","workingDirectory":cwd,"runtimeSeconds":10,"memoryDelta":0,"cpuDelta":0,"highCpuSamples":0})).unwrap()
+    serde_json::from_value(serde_json::json!({
+        "pid": pid,
+        "parentPid": parent,
+        "startTime": start,
+        "name": "fixture",
+        "agent": "codex",
+        "memory": 100,
+        "cpu": 2.5,
+        "status": "Run",
+        "evidence": "Observed parent process chain",
+        "orphan": false,
+        "executable": "/fixture/agent",
+        "purpose": "agent",
+        "purposeEvidence": "fixture",
+        "recommendation": "keep",
+        "recommendationReason": "fixture",
+        "workingDirectory": cwd,
+        "runtimeSeconds": 10,
+        "memoryDelta": 0,
+        "cpuDelta": 0,
+        "highCpuSamples": 0,
+    }))
+    .unwrap()
 }
 #[cfg(test)]
 mod tests {

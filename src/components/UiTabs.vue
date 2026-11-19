@@ -16,24 +16,19 @@ const root = ref<HTMLElement>();
 async function key(event: KeyboardEvent, index: number) {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
   event.preventDefault();
-  const enabled = props.options
-    .map((o, i) => (o.disabled ? -1 : i))
-    .filter((i) => i >= 0);
+  const enabled = props.options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0);
   const current = enabled.indexOf(index);
   const position =
     event.key === "Home"
       ? 0
       : event.key === "End"
         ? enabled.length - 1
-        : (current + (event.key === "ArrowRight" ? 1 : -1) + enabled.length) %
-          enabled.length;
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + enabled.length) % enabled.length;
   const target = enabled[position];
   if (target === undefined) return;
   emit("update:modelValue", props.options[target].value);
   await nextTick();
-  root.value
-    ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
-    [target]?.focus();
+  root.value?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[target]?.focus();
 }
 </script>
 <template>
@@ -56,11 +51,13 @@ async function key(event: KeyboardEvent, index: number) {
       @click="emit('update:modelValue', option.value)"
       @keydown="key($event, i)"
     >
-      <span>{{ option.label }}</span><span
+      <span>{{ option.label }}</span>
+      <span
         v-if="option.count !== undefined"
         class="tab-count"
-        >{{ option.count }}</span
       >
+        {{ option.count }}
+      </span>
     </button>
   </div>
 </template>

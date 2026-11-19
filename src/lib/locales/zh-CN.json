@@ -856,5 +856,19 @@
   "Observing whether the orphan stays idle for at least 5 minutes": "正在观察游离进程是否连续空闲至少 5 分钟",
   "Process state requires manual review": "当前进程状态需要复核",
   "A descendant still needs to run or be reviewed": "仍有子进程在工作或需要复核",
-  "Process activity changed; this task is no longer a cleanup suggestion": "进程活动已变化，不再符合清理建议，已跳过"
+  "Process activity changed; this task is no longer a cleanup suggestion": "进程活动已变化，不再符合清理建议，已跳过",
+  "Resource quick look": "资源速览",
+  "Idle / retained": "空闲保留",
+  "Still observing": "继续观察",
+  "Parent chain is connected · retain this waiting task or application component": "父链正常，保留待命任务或应用组件",
+  "Persistent service or watch task · low CPU alone does not mean it is unused": "常驻服务或文件监听任务，低 CPU 不代表无用",
+  "Recheck processes": "重新检测进程",
+  "Checking processes…": "正在检测…",
+  "Process analysis updated": "进程检测与分类已更新",
+  "No processes match this category and search. Other categories remain available above.": "当前分类和搜索条件下没有进程，可切换上方分类查看。",
+  "No cleanup candidates match this filter.": "当前筛选下没有可清理文件。",
+  "{0} older files ({1}) are retained while their Agent is running. They will be reassessed automatically when it exits.": "有 {0} 个旧文件（{1}）因所属 Agent 仍在运行而保留；退出后会自动重新评估。",
+  "{0} files are awaiting a second stable observation. AgentLens will recheck them automatically.": "有 {0} 个文件正在等待第二次稳定观测，应用将自动复查。",
+  "Files are within retention or protected by your rules. No files currently qualify for cleanup.": "文件仍在保留期内或受规则保护，当前没有满足清理条件的文件。",
+  "Desktop apps do not need a CLI. Use the executable inside the app; leave the script entry point empty.": "桌面应用无需 CLI：填写应用内的可执行文件，脚本入口留空。"
 }

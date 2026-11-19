@@ -4,5 +4,8 @@ withDefaults(defineProps<{ tone?: string; dot?: boolean }>(), {
 });
 </script>
 <template>
-  <span :class="['badge', tone]"><i v-if="dot" /><slot /></span>
+  <span :class="['badge', tone]">
+    <i v-if="dot" />
+    <slot />
+  </span>
 </template>

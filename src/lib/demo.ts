@@ -100,21 +100,9 @@ export function demoSnapshot(): Snapshot {
     ["claude", "debug/session-debug.log", "logs", 900 * MB, true],
     ["codex", "log/codex-tui.log.1", "logs", 574 * MB, true],
     ["gemini", "cache/expired-context.bin", "cache", 460 * MB, true],
-    [
-      "claude",
-      "projects/agentlens/session-01.jsonl",
-      "sessions",
-      246 * MB,
-      false,
-    ],
+    ["claude", "projects/agentlens/session-01.jsonl", "sessions", 246 * MB, false],
     ["codex", "sessions/2026/11/rollout-01.jsonl", "sessions", 186 * MB, false],
-    [
-      "cursor",
-      "workspaceStorage/agentlens/state.vscdb",
-      "settings",
-      94 * MB,
-      false,
-    ],
+    ["cursor", "workspaceStorage/agentlens/state.vscdb", "settings", 94 * MB, false],
     ["claude", "settings.json", "settings", 1520, false],
   ].map(([agent, path, category, size, eligible], i) => ({
     id: `file-${i}`,
@@ -130,11 +118,7 @@ export function demoSnapshot(): Snapshot {
     reason: eligible
       ? "Inactive sample agent · stable file · outside retention window"
       : "Protected: session, configuration or unclassified data",
-    cleanupStatus: eligible
-      ? "eligible"
-      : category === "sessions"
-        ? "sessions"
-        : "protected",
+    cleanupStatus: eligible ? "eligible" : category === "sessions" ? "sessions" : "protected",
     sessionId: null,
   }));
   const processes: Snapshot["processes"] = agents
@@ -157,14 +141,7 @@ export function demoSnapshot(): Snapshot {
               : "Observed parent process chain",
         orphan: i === 3,
         executable: `/usr/local/bin/${i === 0 ? a.id : "node"}`,
-        purpose:
-          i === 0
-            ? "agent"
-            : i === 1
-              ? "devserver"
-              : i === 3
-                ? "build"
-                : "unknown",
+        purpose: i === 0 ? "agent" : i === 1 ? "devserver" : i === 3 ? "build" : "unknown",
         purposeEvidence:
           i === 0
             ? "Agent command-line executable"
@@ -217,9 +194,7 @@ export function demoSnapshot(): Snapshot {
     diskAvailable: 387.4 * GB,
     agents: agents.map((a) => ({
       ...a,
-      cpu: processes
-        .filter((p) => p.agent === a.id)
-        .reduce((s, p) => s + p.cpu, 0),
+      cpu: processes.filter((p) => p.agent === a.id).reduce((s, p) => s + p.cpu, 0),
     })),
     roots,
     files,
@@ -245,8 +220,7 @@ export function demoSnapshot(): Snapshot {
     history: Array.from({ length: 49 }, (_, i) => {
       const t = i / 48;
       const step =
-        (Math.sin(i * 0.75) + Math.cos(i * 0.31)) * 0.055 +
-        (i > 29 ? 0.26 : i > 18 ? 0.13 : 0);
+        (Math.sin(i * 0.75) + Math.cos(i * 0.31)) * 0.055 + (i > 29 ? 0.26 : i > 18 ? 0.13 : 0);
       const values = [
         6.9 + t * 5.7 + step,
         4.7 + t * 3.8 + step * 0.6,
@@ -276,10 +250,7 @@ export function demoSnapshot(): Snapshot {
           action: "discovered",
           count: 2,
           failed: 0,
-          paths: [
-            "/Users/alex/Developer/agentlens",
-            "/Users/alex/Developer/api-service",
-          ],
+          paths: ["/Users/alex/Developer/agentlens", "/Users/alex/Developer/api-service"],
         },
       },
       {
@@ -365,15 +336,11 @@ export function demoSnapshot(): Snapshot {
       retentionDays: 7,
       menuBar: true,
     },
-    cleanupSummary: Array.from(new Set(files.map((f) => f.cleanupStatus))).map(
-      (code) => ({
-        code,
-        count: files.filter((f) => f.cleanupStatus === code).length,
-        bytes: files
-          .filter((f) => f.cleanupStatus === code)
-          .reduce((sum, f) => sum + f.size, 0),
-      }),
-    ),
+    cleanupSummary: Array.from(new Set(files.map((f) => f.cleanupStatus))).map((code) => ({
+      code,
+      count: files.filter((f) => f.cleanupStatus === code).length,
+      bytes: files.filter((f) => f.cleanupStatus === code).reduce((sum, f) => sum + f.size, 0),
+    })),
     scanComplete: true,
     scanProgress: {
       background: false,

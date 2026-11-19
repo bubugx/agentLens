@@ -20,14 +20,15 @@ const detailsId = useId();
         :class="['checkbox', { selected: checked }]"
         @click="emit('check')"
       >
-        <Check v-if="checked" :size="12" />
+        <Check
+          v-if="checked"
+          :size="12"
+        />
       </button>
       <span :class="['file-kind', file.category]"><Folder :size="18" /></span>
       <div class="file-description">
         <strong>{{ file.relativePath }}</strong>
-        <span :title="file.path">{{
-          compactPath(file.path.replace(/[\\/][^\\/]+$/, ""))
-        }}</span>
+        <span :title="file.path">{{ compactPath(file.path.replace(/[\\/][^\\/]+$/, "")) }}</span>
       </div>
       <span class="file-category">{{ categoryLabel(file.category) }}</span>
       <span class="file-bytes tabular">{{ bytes(file.size) }}</span>
@@ -51,7 +52,11 @@ const detailsId = useId();
         <ArrowUpRight :size="16" />
       </button>
     </div>
-    <div v-if="expanded" :id="detailsId" class="file-row-details">
+    <div
+      v-if="expanded"
+      :id="detailsId"
+      class="file-row-details"
+    >
       <span :class="{ eligible: file.eligible }">{{ t(file.reason) }}</span>
       <code>{{ file.path }}</code>
     </div>

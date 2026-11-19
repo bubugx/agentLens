@@ -160,8 +160,7 @@ export interface CleanupBucket {
 }
 export interface ScanProgress {
   background: boolean;
-  phase:
-    "" | "discovery" | "indexing" | "saving" | "complete" | "paused" | "error";
+  phase: "" | "discovery" | "indexing" | "saving" | "complete" | "paused" | "error";
   initial: boolean;
   directories: number;
   files: number;
@@ -270,10 +269,7 @@ export const AGENT_META: Record<
 export function bytes(value: number, decimals = 1): string {
   if (!Number.isFinite(value)) return "—";
   if (value === 0) return "0 B";
-  const unit = Math.max(
-    0,
-    Math.min(4, Math.floor(Math.log(Math.abs(value)) / Math.log(1000))),
-  );
+  const unit = Math.max(0, Math.min(4, Math.floor(Math.log(Math.abs(value)) / Math.log(1000))));
   return `${(value / 1000 ** unit).toFixed(unit === 0 ? 0 : decimals)} ${["B", "KB", "MB", "GB", "TB"][unit]}`;
 }
 export function delta(value: number): string {
@@ -304,9 +300,7 @@ export function growthSignals(history: HistoryPoint[]): GrowthSignal[] {
     span < 240 ||
     span > 900 ||
     recent.some(
-      (p, i) =>
-        i > 0 &&
-        (p.time - recent[i - 1].time > 150 || p.time <= recent[i - 1].time),
+      (p, i) => i > 0 && (p.time - recent[i - 1].time > 150 || p.time <= recent[i - 1].time),
     )
   )
     return [];

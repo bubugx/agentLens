@@ -1,9 +1,55 @@
+# Dependencies and application builds
 node_modules/
 dist/
-src-tauri/target/
-*.local
+/target/
+/src-tauri/target/
+/src-tauri/gen/
+*.tsbuildinfo
+
+# Machine-specific settings and secrets
 .DS_Store
+Thumbs.db
+*.local
+.env
+.env.*
+!.env.example
+/.cargo/config.toml
+.idea/
+*.code-workspace
+
+# Local indexes, diagnostics, recordings and test output
+/artifacts/
+/docs/*validation*.json
+/docs/monitoring-probe.json
 test-results/
 playwright-report/
+coverage/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-shm
+*.db-wal
+*.log
 
-*.tsbuildinfo
+# Python/media environment and generated intermediate assets
+.venv*/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+/docs/video/assets/
+/docs/video/validation.json
+/docs/video/preview-verified.jpg
+/docs/media/frame-*.jpg
+/docs/media/agentlens-contact-sheet.jpg
+/docs/media/video-metadata.json
+/docs/media/*.mp4
+!/docs/media/agentlens-intro-zh.mp4
+
+# Only curated, sanitized public screenshots belong in Git
+/docs/screenshots/*
+!/docs/screenshots/overview-zh.png
+!/docs/screenshots/storage-diagnostics.png
+!/docs/screenshots/processes-explained.png
+!/docs/screenshots/initial-scan.png
+!/docs/screenshots/generic-adoption-preview-zh.png

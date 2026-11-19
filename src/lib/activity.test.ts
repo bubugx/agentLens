@@ -16,12 +16,7 @@ const point = (time: number, storage: number) =>
   ({ time, storage, memory: 0, cpu: 0, agents: [] }) as HistoryPoint;
 describe("activity and resource analysis", () => {
   it("storage trends use actual usage samples and a boundary predecessor", () => {
-    const result = storageSeries(
-      [point(100, 50), point(180, 70), point(300, 60)],
-      150,
-      300,
-      [],
-    );
+    const result = storageSeries([point(100, 50), point(180, 70), point(300, 60)], 150, 300, []);
     expect(result.mode).toBe("usage");
     expect(result.points).toEqual([
       { time: 150, value: 50 },
@@ -39,12 +34,8 @@ describe("activity and resource analysis", () => {
     expect(result.points.at(-1)?.value).toBe(20);
   });
   it("category filters and operation counts preserve historical record formats", () => {
-    expect(matchesActivity(event("process", 100, 0), "storage", "")).toBe(
-      false,
-    );
-    expect(activityCount({ ...event("discovery", 100, 0), detail: "12" })).toBe(
-      12,
-    );
+    expect(matchesActivity(event("process", 100, 0), "storage", "")).toBe(false);
+    expect(activityCount({ ...event("discovery", 100, 0), detail: "12" })).toBe(12);
     expect(
       activityCount({
         ...event("cleanup", 100, -10),

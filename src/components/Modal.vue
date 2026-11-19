@@ -35,7 +35,10 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <div class="modal-backdrop" @mousedown.self="emit('close')">
+  <div
+    class="modal-backdrop"
+    @mousedown.self="emit('close')"
+  >
     <section
       ref="root"
       :class="['modal', 'glass', { wide }]"
@@ -57,7 +60,10 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <div class="modal-body"><slot /></div>
-      <div v-if="$slots.footer" class="modal-footer">
+      <div
+        v-if="$slots.footer"
+        class="modal-footer"
+      >
         <slot name="footer" />
       </div>
     </section>

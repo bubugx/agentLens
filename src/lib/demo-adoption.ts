@@ -53,11 +53,7 @@ const ephemeral = new Map<number, string>();
 export function restoreDemoAdoption(snapshot: Snapshot): Snapshot {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-    if (
-      saved &&
-      Array.isArray(saved.definitions) &&
-      Array.isArray(saved.roots)
-    ) {
+    if (saved && Array.isArray(saved.definitions) && Array.isArray(saved.roots)) {
       snapshot = {
         ...snapshot,
         agentDefinitions: saved.definitions,
@@ -93,11 +89,7 @@ export function reconcileDemoAdoption(snapshot: Snapshot): Snapshot {
     if (definition) ownership.set(candidate.pid, definition.id);
   }
   for (const candidate of adoptionDemoCandidates)
-    if (
-      !ownership.has(candidate.pid) &&
-      candidate.parentPid &&
-      ownership.has(candidate.parentPid)
-    )
+    if (!ownership.has(candidate.pid) && candidate.parentPid && ownership.has(candidate.parentPid))
       ownership.set(candidate.pid, ownership.get(candidate.parentPid)!);
   const processes: Process[] = adoptionDemoCandidates
     .filter((c) => ownership.has(c.pid))
@@ -122,10 +114,7 @@ export function reconcileDemoAdoption(snapshot: Snapshot): Snapshot {
     }));
   return {
     ...snapshot,
-    processes: [
-      ...snapshot.processes.filter((p) => !p.agent.startsWith("custom-")),
-      ...processes,
-    ],
+    processes: [...snapshot.processes.filter((p) => !p.agent.startsWith("custom-")), ...processes],
     agents: [
       ...snapshot.agents.filter((a) => !a.id.startsWith("custom-")),
       ...definitions
@@ -155,10 +144,7 @@ export function demoProcessCandidates(snapshot: Snapshot) {
     agent: snapshot.processes.find((p) => p.pid === c.pid)?.agent || null,
   }));
 }
-export function demoAdoptionPreview(
-  snapshot: Snapshot,
-  request: AdoptRequest,
-): AdoptionPreview {
+export function demoAdoptionPreview(snapshot: Snapshot, request: AdoptRequest): AdoptionPreview {
   if (
     !request.name.trim() ||
     request.name.trim().length > 64 ||
@@ -166,10 +152,9 @@ export function demoAdoptionPreview(
   )
     throw new Error("Enter a name of 1–64 characters and a valid color");
   if (
-    [
-      ...snapshot.agents,
-      ...(snapshot.agentDefinitions || []).filter((d) => d.enabled),
-    ].some((d) => d.name.toLowerCase() === request.name.trim().toLowerCase())
+    [...snapshot.agents, ...(snapshot.agentDefinitions || []).filter((d) => d.enabled)].some(
+      (d) => d.name.toLowerCase() === request.name.trim().toLowerCase(),
+    )
   )
     throw new Error("An Agent with this name already exists");
   const candidates = demoProcessCandidates(snapshot);
@@ -182,8 +167,7 @@ export function demoAdoptionPreview(
             c.startTime === request.startTime &&
             c.executable === request.executable,
         );
-  if (request.pid !== null && !root)
-    throw new Error("Process exited or its identity changed");
+  if (request.pid !== null && !root) throw new Error("Process exited or its identity changed");
   if (!root && !request.remember)
     throw new Error("Choose a running process or save a recognition rule");
   if (
@@ -191,9 +175,7 @@ export function demoAdoptionPreview(
     (!request.executable.startsWith("/") ||
       (/(node|python[\d.]*)$/.test(request.executable) && !request.entrypoint))
   )
-    throw new Error(
-      "A shared runtime requires a specific script or module entry point",
-    );
+    throw new Error("A shared runtime requires a specific script or module entry point");
   if (root && request.remember && root.entrypoint !== request.entrypoint)
     throw new Error("The rule does not match the selected process entry point");
   const rule = request.remember
@@ -201,8 +183,7 @@ export function demoAdoptionPreview(
     : null;
   if (
     (snapshot.agentDefinitions || []).some(
-      (d) =>
-        d.enabled && d.rule && JSON.stringify(d.rule) === JSON.stringify(rule),
+      (d) => d.enabled && d.rule && JSON.stringify(d.rule) === JSON.stringify(rule),
     )
   )
     throw new Error("This recognition rule is already in use");
@@ -211,15 +192,12 @@ export function demoAdoptionPreview(
       .filter(
         (c) =>
           c.pid === root?.pid ||
-          (rule &&
-            c.executable === rule.executable &&
-            c.entrypoint === rule.entrypoint),
+          (rule && c.executable === rule.executable && c.entrypoint === rule.entrypoint),
       )
       .map((c) => c.pid),
   );
   for (let i = 0; i < 64; i++)
-    for (const c of candidates)
-      if (c.parentPid && ids.has(c.parentPid)) ids.add(c.pid);
+    for (const c of candidates) if (c.parentPid && ids.has(c.parentPid)) ids.add(c.pid);
   const processes = candidates.filter((c) => ids.has(c.pid));
   if (processes.some((c) => c.agent))
     throw new Error("This process is already managed by an Agent");
@@ -230,9 +208,7 @@ export function demoAdoptionPreview(
     if (
       [...snapshot.roots, ...roots].some(
         (r) =>
-          r.path === b.path ||
-          r.path.startsWith(b.path + "/") ||
-          b.path.startsWith(r.path + "/"),
+          r.path === b.path || r.path.startsWith(b.path + "/") || b.path.startsWith(r.path + "/"),
       )
     )
       throw new Error("This directory overlaps an existing monitoring root");
@@ -262,10 +238,7 @@ export function demoAdopt(snapshot: Snapshot, request: AdoptRequest): Snapshot {
   const next = reconcileDemoAdoption({
     ...snapshot,
     agentDefinitions: [...(snapshot.agentDefinitions || []), definition],
-    roots: [
-      ...snapshot.roots,
-      ...preview.roots.map((r) => ({ ...r, agent: id })),
-    ],
+    roots: [...snapshot.roots, ...preview.roots.map((r) => ({ ...r, agent: id }))],
   });
   persist(next);
   return next;

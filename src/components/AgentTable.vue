@@ -18,7 +18,8 @@ const emit = defineEmits<{ select: [id: string] }>();
           <th>{{ t("Storage") }}</th>
           <th>{{ t("Memory") }}</th>
           <th v-if="!compact">
-            {{ t("Growth") }} <span class="muted">↗</span>
+            {{ t("Growth") }}
+            <span class="muted">↗</span>
           </th>
           <th :aria-label="t('Actions')" />
         </tr>
@@ -33,25 +34,33 @@ const emit = defineEmits<{ select: [id: string] }>();
         >
           <td>
             <div class="agent-name">
-              <AgentIcon :id="agent.id" /><span
-                ><strong>{{ t(agent.name) }}</strong
-                ><small
-                  >{{ agent.sessions }} {{ t("sessions") }} <span>·</span>
-                  {{ agent.files.toLocaleString() }} {{ t("files") }}</small
-                ></span
-              >
+              <AgentIcon :id="agent.id" />
+              <span>
+                <strong>{{ t(agent.name) }}</strong>
+                <small>
+                  {{ agent.sessions }} {{ t("sessions") }}
+                  <span>·</span>
+                  {{ agent.files.toLocaleString() }} {{ t("files") }}
+                </small>
+              </span>
             </div>
           </td>
           <td>
-            <Badge dot :tone="agent.processes ? 'green' : 'neutral'">{{
-              agent.processes ? t("Active") : t("Idle")
-            }}</Badge>
+            <Badge
+              dot
+              :tone="agent.processes ? 'green' : 'neutral'"
+            >
+              {{ agent.processes ? t("Active") : t("Idle") }}
+            </Badge>
           </td>
           <td class="tabular">{{ bytes(agent.storage) }}</td>
           <td class="tabular secondary">
             {{ agent.processes ? bytes(agent.memory) : "—" }}
           </td>
-          <td v-if="!compact" class="tabular growth-text">
+          <td
+            v-if="!compact"
+            class="tabular growth-text"
+          >
             {{ delta(agent.growth) }}
           </td>
           <td>

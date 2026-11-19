@@ -9,8 +9,7 @@ import Modal from "./Modal.vue";
 import AgentIcon from "./AgentIcon.vue";
 const props = defineProps<{ data: Snapshot }>();
 const definitions = computed(
-  () =>
-    props.data.agentDefinitions?.filter((d) => !d.builtin && d.enabled) || [],
+  () => props.data.agentDefinitions?.filter((d) => !d.builtin && d.enabled) || [],
 );
 const removing = ref<AgentDefinition | null>(null),
   busy = ref(false),
@@ -33,7 +32,10 @@ watch(error, (value) => {
 });
 </script>
 <template>
-  <section v-if="definitions.length" class="panel agent-registry">
+  <section
+    v-if="definitions.length"
+    class="panel agent-registry"
+  >
     <div class="section-heading">
       <div>
         <h2>{{ t("Custom Agents") }}</h2>
@@ -41,23 +43,26 @@ watch(error, (value) => {
       </div>
       <span class="count-pill">{{ definitions.length }}</span>
     </div>
-    <div v-for="d in definitions" :key="d.id" class="agent-registry-row">
+    <div
+      v-for="d in definitions"
+      :key="d.id"
+      class="agent-registry-row"
+    >
       <AgentIcon :id="d.id" />
       <div class="agent-registry-info">
-        <strong>{{ d.name }}</strong><small
-          >{{
-            d.rule ? t("Saved recognition rule") : t("Current app session only")
-          }}
-          · {{ data.processes.filter((p) => p.agent === d.id).length }}
-          {{ t("processes") }} ·
+        <strong>{{ d.name }}</strong>
+        <small>
+          {{ d.rule ? t("Saved recognition rule") : t("Current app session only") }} ·
+          {{ data.processes.filter((p) => p.agent === d.id).length }} {{ t("processes") }} ·
           {{ data.roots.filter((r) => r.agent === d.id).length }}
-          {{ t("directories") }}</small
-        ><code
+          {{ t("directories") }}
+        </small>
+        <code
           v-if="d.rule"
           :title="`${d.rule.executable} ${d.rule.entrypoint}`"
-          >{{ d.rule.executable
-          }}{{ d.rule.entrypoint ? ` · ${d.rule.entrypoint}` : "" }}</code
         >
+          {{ d.rule.executable }}{{ d.rule.entrypoint ? ` · ${d.rule.entrypoint}` : "" }}
+        </code>
       </div>
       <button
         class="button small"
@@ -67,7 +72,8 @@ watch(error, (value) => {
           error = '';
         "
       >
-        <Unplug :size="14" />{{ t("Detach") }}
+        <Unplug :size="14" />
+        {{ t("Detach") }}
       </button>
     </div>
   </section>
@@ -75,7 +81,8 @@ watch(error, (value) => {
     v-if="removing"
     :title="t('Detach {0}?', removing.name)"
     @close="!busy && (removing = null)"
-    ><p>
+  >
+    <p>
       {{
         t(
           "Recognition and directory monitoring for this Agent will stop. Its files and processes are kept, and historical labels remain available.",
@@ -83,12 +90,21 @@ watch(error, (value) => {
       }}
     </p>
 
-    <template #footer
-      ><button class="button" :disabled="busy" @click="removing = null">
-        {{ t("Cancel") }}</button
-      ><button class="button primary" :disabled="busy" @click="detach">
+    <template #footer>
+      <button
+        class="button"
+        :disabled="busy"
+        @click="removing = null"
+      >
+        {{ t("Cancel") }}
+      </button>
+      <button
+        class="button primary"
+        :disabled="busy"
+        @click="detach"
+      >
         {{ t("Confirm detach") }}
-      </button></template
-    ></Modal
-  >
+      </button>
+    </template>
+  </Modal>
 </template>

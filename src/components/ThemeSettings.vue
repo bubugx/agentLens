@@ -37,26 +37,28 @@ const palettes = [
     >
       <span
         class="theme-sample"
-        :style="
-          variant === 'custom'
-            ? { '--sample-accent': settings.customAccent }
-            : {}
-        "
-        ><i /><span><b /><b /><b /></span></span
-      ><span
-        >{{
-          t(
-            variant === "light"
-              ? "Light"
-              : variant === "dark"
-                ? "Dark"
-                : "Custom theme",
-          )
-        }}<Check v-if="settings.theme === variant" :size="13"
-      /></span>
+        :style="variant === 'custom' ? { '--sample-accent': settings.customAccent } : {}"
+      >
+        <i />
+        <span>
+          <b />
+          <b />
+          <b />
+        </span>
+      </span>
+      <span>
+        {{ t(variant === "light" ? "Light" : variant === "dark" ? "Dark" : "Custom theme") }}
+        <Check
+          v-if="settings.theme === variant"
+          :size="13"
+        />
+      </span>
     </button>
   </div>
-  <div v-if="settings.theme === 'custom'" class="custom-theme-editor">
+  <div
+    v-if="settings.theme === 'custom'"
+    class="custom-theme-editor"
+  >
     <div class="setting-row">
       <div>
         <strong>{{ t("Base appearance") }}</strong>
@@ -82,7 +84,10 @@ const palettes = [
           :aria-pressed="settings.customAccent === palette.color"
           @click="update('customAccent', palette.color)"
         >
-          <Check v-if="settings.customAccent === palette.color" :size="15" />
+          <Check
+            v-if="settings.customAccent === palette.color"
+            :size="15"
+          />
         </button>
       </div>
       <input
@@ -94,7 +99,8 @@ const palettes = [
         spellcheck="false"
         placeholder="#167c83"
         @keydown.enter="valid && update('customAccent', accent)"
-      /><button
+      />
+      <button
         class="button secondary small"
         :disabled="!valid || accent === settings.customAccent"
         @click="update('customAccent', accent)"

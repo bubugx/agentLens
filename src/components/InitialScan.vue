@@ -33,9 +33,7 @@ watch(
   { immediate: true },
 );
 const stageIndex = computed(() =>
-  props.data.scanProgress.phase === "complete"
-    ? stages.length
-    : lastStage.value,
+  props.data.scanProgress.phase === "complete" ? stages.length : lastStage.value,
 );
 const state = computed(() =>
   props.data.scanning ? "running" : props.data.scanProgress.phase || "paused",
@@ -60,7 +58,10 @@ const nodes = [
   >
     <div class="initial-scan-copy">
       <h2>{{ t("Finding your existing agent footprint") }}</h2>
-      <ol class="scan-stages" :aria-label="t('Scan stages')">
+      <ol
+        class="scan-stages"
+        :aria-label="t('Scan stages')"
+      >
         <li
           v-for="(stage, index) in stages"
           :key="stage.phase"
@@ -68,7 +69,10 @@ const nodes = [
           :aria-current="index === stageIndex ? 'step' : undefined"
         >
           <span class="scan-stage-marker">
-            <Check v-if="index < stageIndex" :size="13" />
+            <Check
+              v-if="index < stageIndex"
+              :size="13"
+            />
             <Pause
               v-else-if="index === stageIndex && state === 'paused'"
               :size="12"
@@ -88,20 +92,35 @@ const nodes = [
         </li>
       </ol>
       <div class="scan-shortcuts">
-        <button class="text-button" @click="$emit('navigate', 'Processes')">
-          {{ t("Processes") }}<ArrowUpRight :size="13" />
+        <button
+          class="text-button"
+          @click="$emit('navigate', 'Processes')"
+        >
+          {{ t("Processes") }}
+          <ArrowUpRight :size="13" />
         </button>
-        <button class="text-button" @click="$emit('navigate', 'Settings')">
-          {{ t("Settings") }}<ArrowUpRight :size="13" />
+        <button
+          class="text-button"
+          @click="$emit('navigate', 'Settings')"
+        >
+          {{ t("Settings") }}
+          <ArrowUpRight :size="13" />
         </button>
       </div>
     </div>
 
-    <div class="scan-visual" aria-hidden="true">
+    <div
+      class="scan-visual"
+      aria-hidden="true"
+    >
       <div class="scan-field">
         <div class="scan-grid" />
         <div class="scan-grid-beam" />
-        <svg class="scan-circuits" viewBox="0 0 560 400" fill="none">
+        <svg
+          class="scan-circuits"
+          viewBox="0 0 560 400"
+          fill="none"
+        >
           <path
             d="M84 116H144L228 200H280M443 76H404L280 200M495 213H390L377 200H280M433 333H413L280 200M128 337H143L280 200M46 226H137L163 200H280"
           />
@@ -131,14 +150,34 @@ const nodes = [
             '--signal-delay': `${node.delay}s`,
           }"
         >
-          <div class="scan-node"><component :is="node.icon" :size="17" /></div>
+          <div class="scan-node">
+            <component
+              :is="node.icon"
+              :size="17"
+            />
+          </div>
           <i class="scan-signal" />
         </div>
         <div class="scan-lens-core">
-          <Check v-if="state === 'complete'" :size="36" />
-          <Pause v-else-if="state === 'paused'" :size="28" />
-          <TriangleAlert v-else-if="state === 'error'" :size="28" />
-          <img v-else src="/icon.svg" alt="" width="76" height="76" />
+          <Check
+            v-if="state === 'complete'"
+            :size="36"
+          />
+          <Pause
+            v-else-if="state === 'paused'"
+            :size="28"
+          />
+          <TriangleAlert
+            v-else-if="state === 'error'"
+            :size="28"
+          />
+          <img
+            v-else
+            src="/icon.svg"
+            alt=""
+            width="76"
+            height="76"
+          />
         </div>
         <span class="scan-reticle scan-reticle-tl" />
         <span class="scan-reticle scan-reticle-tr" />
@@ -163,8 +202,7 @@ const nodes = [
   border: 1px solid color-mix(in srgb, var(--scan-color) 25%, var(--border));
   border-radius: 14px;
   background:
-    radial-gradient(ellipse at 76% 50%, var(--scan-soft), transparent 65%),
-    var(--surface);
+    radial-gradient(ellipse at 76% 50%, var(--scan-soft), transparent 65%), var(--surface);
   box-shadow: 0 8px 44px color-mix(in srgb, var(--scan-color) 4%, transparent);
   animation: scan-scene-enter 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -291,12 +329,7 @@ const nodes = [
 .scan-grid-beam {
   position: absolute;
   inset: 40px 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--scan-soft),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--scan-soft), transparent);
   mask-image: radial-gradient(ellipse, #000 10%, transparent 64%);
   animation: scan-grid-pass 6s ease-in-out infinite;
 }
@@ -351,11 +384,7 @@ const nodes = [
     var(--scan-color) 0deg 0.65deg,
     transparent 0.65deg 6deg
   );
-  mask-image: radial-gradient(
-    transparent 67%,
-    #000 67.5% 69%,
-    transparent 69.5%
-  );
+  mask-image: radial-gradient(transparent 67%, #000 67.5% 69%, transparent 69.5%);
   opacity: 0.45;
   animation: scan-orbit-turn 80s linear infinite;
 }

@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  PopoverRoot,
-  PopoverTrigger,
-  PopoverPortal,
-  PopoverContent,
-  PopoverClose,
-} from "reka-ui";
+import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, PopoverClose } from "reka-ui";
 import { Info, X } from "lucide-vue-next";
 import { ref } from "vue";
 import { t } from "../lib/i18n";
@@ -14,7 +8,10 @@ const open = ref(false);
 </script>
 <template>
   <PopoverRoot v-model:open="open">
-    <PopoverTrigger class="icon-button context-help" :aria-label="label">
+    <PopoverTrigger
+      class="icon-button context-help"
+      :aria-label="label"
+    >
       <Info :size="15" />
     </PopoverTrigger>
     <PopoverPortal>
@@ -27,7 +24,10 @@ const open = ref(false);
         :aria-label="label"
         @keydown.esc.stop.prevent="open = false"
       >
-        <PopoverClose class="icon-button" :aria-label="t('Close')">
+        <PopoverClose
+          class="icon-button"
+          :aria-label="t('Close')"
+        >
           <X :size="14" />
         </PopoverClose>
         <slot />

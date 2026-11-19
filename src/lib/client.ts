@@ -31,9 +31,7 @@ function emit() {
 export async function snapshot(): Promise<Snapshot> {
   return native ? invoke("get_snapshot") : preview;
 }
-export async function subscribe(
-  callback: (s: Snapshot) => void,
-): Promise<() => void> {
+export async function subscribe(callback: (s: Snapshot) => void): Promise<() => void> {
   if (native) return listen<Snapshot>("snapshot", (e) => callback(e.payload));
   callbacks.add(callback);
   return () => {
@@ -44,6 +42,11 @@ export async function refresh() {
   if (native) return invoke("refresh");
   preview = { ...preview, scannedAt: Math.floor(Date.now() / 1000) };
   emit();
+}
+export async function refreshProcesses(): Promise<Snapshot> {
+  if (native) return invoke("refresh_process_analysis");
+  emit();
+  return preview;
 }
 export async function monitoring(enabled: boolean) {
   if (native) return invoke("set_monitoring", { enabled });
@@ -132,9 +135,7 @@ export async function executeCleanup(plan: CleanupPlan): Promise<ActionResult> {
 }
 export async function stopProcess(pid: number, startTime: number) {
   if (native) return invoke("stop_process", { pid, startTime });
-  if (
-    !preview.processes.some((p) => p.pid === pid && p.startTime === startTime)
-  )
+  if (!preview.processes.some((p) => p.pid === pid && p.startTime === startTime))
     throw new Error("Process exited or its identity changed");
   preview = {
     ...preview,
@@ -156,12 +157,8 @@ export async function stopProcess(pid: number, startTime: number) {
   preview.agents = preview.agents.map((a) => ({
     ...a,
     processes: preview.processes.filter((p) => p.agent === a.id).length,
-    memory: preview.processes
-      .filter((p) => p.agent === a.id)
-      .reduce((s, p) => s + p.memory, 0),
-    cpu: preview.processes
-      .filter((p) => p.agent === a.id)
-      .reduce((s, p) => s + p.cpu, 0),
+    memory: preview.processes.filter((p) => p.agent === a.id).reduce((s, p) => s + p.memory, 0),
+    cpu: preview.processes.filter((p) => p.agent === a.id).reduce((s, p) => s + p.cpu, 0),
   }));
   emit();
 }
@@ -181,13 +178,10 @@ export async function stopProcesses(
       else {
         if (
           suggestedOnly &&
-          preview.processes.find(
-            (p) => p.pid === process.pid && p.startTime === process.startTime,
-          )?.assessment?.category !== "suggested"
+          preview.processes.find((p) => p.pid === process.pid && p.startTime === process.startTime)
+            ?.assessment?.category !== "suggested"
         )
-          throw new Error(
-            "Process activity changed; this task is no longer a cleanup suggestion",
-          );
+          throw new Error("Process activity changed; this task is no longer a cleanup suggestion");
         await stopProcess(process.pid, process.startTime);
       }
       result.requested.push(process);
@@ -209,12 +203,8 @@ export async function reveal(path: string) {
   }
 }
 
-export async function subscribeProgress(
-  callback: (p: ScanProgress) => void,
-): Promise<() => void> {
-  return native
-    ? listen<ScanProgress>("scan-progress", (e) => callback(e.payload))
-    : () => {};
+export async function subscribeProgress(callback: (p: ScanProgress) => void): Promise<() => void> {
+  return native ? listen<ScanProgress>("scan-progress", (e) => callback(e.payload)) : () => {};
 }
 export async function fullRescan() {
   if (native) return invoke("full_rescan");
@@ -252,14 +242,7 @@ export async function fullRescan() {
       ...preview,
       scanProgress: {
         ...preview.scanProgress,
-        phase:
-          step < 3
-            ? "discovery"
-            : step < 7
-              ? "indexing"
-              : step === 7
-                ? "saving"
-                : "complete",
+        phase: step < 3 ? "discovery" : step < 7 ? "indexing" : step === 7 ? "saving" : "complete",
         directories: step * 167,
         files: step * 1437,
         bytes: step * 3.55e9,
@@ -283,12 +266,9 @@ export async function inventoryDetails(
   query: string,
   offset = 0,
 ): Promise<InventoryDetails> {
-  if (native)
-    return invoke("inventory_details", { status, root, query, offset });
+  if (native) return invoke("inventory_details", { status, root, query, offset });
   const matches = preview.files.filter(
-    (f) =>
-      f.cleanupStatus === status &&
-      f.path.toLowerCase().includes(query.toLowerCase()),
+    (f) => f.cleanupStatus === status && f.path.toLowerCase().includes(query.toLowerCase()),
   );
   const groups = preview.roots
     .map((r) => {
@@ -319,16 +299,10 @@ export async function inventoryDetails(
 }
 
 export async function listProcessCandidates(): Promise<ProcessCandidate[]> {
-  return native
-    ? invoke("list_process_candidates")
-    : demoProcessCandidates(preview);
+  return native ? invoke("list_process_candidates") : demoProcessCandidates(preview);
 }
-export async function previewAdoption(
-  request: AdoptRequest,
-): Promise<AdoptionPreview> {
-  return native
-    ? invoke("preview_adoption", { request })
-    : demoAdoptionPreview(preview, request);
+export async function previewAdoption(request: AdoptRequest): Promise<AdoptionPreview> {
+  return native ? invoke("preview_adoption", { request }) : demoAdoptionPreview(preview, request);
 }
 export async function adoptAgent(request: AdoptRequest): Promise<Snapshot> {
   if (native) return invoke("adopt_agent", { request });
@@ -353,18 +327,14 @@ export async function resourceHistory(
     scope === "all"
       ? preview.processes
       : scope === "project"
-        ? projectGroups(preview.processes, preview.roots).find(
-            (p) => p.id === id,
-          )?.processes || []
+        ? projectGroups(preview.processes, preview.roots).find((p) => p.id === id)?.processes || []
         : preview.processes.filter((p) => `${p.pid}:${p.startTime}` === id);
   const memory = processes.reduce((s, p) => s + p.memory, 0),
     cpu = processes.reduce((s, p) => s + p.cpu, 0),
     end = Math.floor(Date.now() / 1000);
   return Array.from({ length: 60 }, (_, i) => ({
     time: end - seconds + (i / 59) * seconds,
-    memory: Math.round(
-      memory * (0.7 + (0.3 * i) / 59 + 0.03 * Math.sin(i * 0.6)),
-    ),
+    memory: Math.round(memory * (0.7 + (0.3 * i) / 59 + 0.03 * Math.sin(i * 0.6))),
     cpu: Math.max(0, cpu * (0.6 + (0.4 * i) / 59 + 0.2 * Math.sin(i * 0.4))),
     processes: processes.length,
   }));

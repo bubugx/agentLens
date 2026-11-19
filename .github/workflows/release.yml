@@ -1,0 +1,147 @@
+name: Release desktop installers
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build, for example v0.1.0
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      release_id: ${{ steps.release.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate version and tag
+        id: tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          node scripts/version.mjs --check "$RELEASE_TAG"
+          git rev-parse --verify "refs/tags/$RELEASE_TAG"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Prepare a draft release
+        id: release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = process.env.RELEASE_TAG;
+            const version = tag.slice(1);
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const section = changelog.split(`## ${version}\n`)[1]?.split('\n## ')[0]?.trim();
+            if (!section) throw new Error(`CHANGELOG.md needs a section for ${version}`);
+            const body = `${section}\n\n安装与系统要求：[下载说明](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${tag}/docs/releases.md)\n\n发布后请使用 SHA256SUMS.txt 核对下载文件。`;
+            let existing;
+            try { existing = (await github.rest.repos.getReleaseByTag({...context.repo, tag})).data; }
+            catch (e) { if (e.status !== 404) throw e; }
+            if (existing && !existing.draft) throw new Error('This version is already published. Use a new version tag.');
+            const fields = {...context.repo, name: `AgentLens ${tag}`, body, draft: true, prerelease: tag.includes('-')};
+            const release = existing
+              ? await github.rest.repos.updateRelease({...fields, release_id: existing.id})
+              : await github.rest.repos.createRelease({...fields, tag_name: tag});
+            return release.data.id;
+  build:
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: release-${{ matrix.target }}
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2
+      - run: npm ci
+      - run: npm run format:check
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build and upload installers to the draft
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        with:
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+          tagName: ${{ needs.prepare.outputs.tag }}
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download installers and add the product film
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          mkdir -p artifacts/release
+          gh release download "$RELEASE_TAG" --dir artifacts/release
+          cp docs/media/agentlens-intro-zh.mp4 docs/media/agentlens-intro-zh.srt docs/media/agentlens-intro-zh.vtt artifacts/release/
+          node scripts/checksums.mjs artifacts/release
+          gh release upload "$RELEASE_TAG" artifacts/release/SHA256SUMS.txt artifacts/release/agentlens-intro-zh.* --clobber
+      - name: Publish only after every platform succeeds
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({...context.repo, release_id: Number(process.env.RELEASE_ID), draft: false});

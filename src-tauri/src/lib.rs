@@ -200,9 +200,6 @@ struct Engine {
     running: Arc<AtomicBool>,
     full_scan: Arc<AtomicBool>,
     revision: Arc<AtomicU64>,
-    quick_hover: Arc<AtomicBool>,
-    tray_hover: Arc<AtomicBool>,
-    quick_generation: Arc<AtomicU64>,
     wake: Arc<(Mutex<bool>, Condvar)>,
 }
 fn blank(
@@ -296,9 +293,6 @@ impl Engine {
             running: Arc::new(AtomicBool::new(false)),
             full_scan: Arc::new(AtomicBool::new(initial)),
             revision: Arc::new(AtomicU64::new(0)),
-            quick_hover: Arc::new(AtomicBool::new(false)),
-            tray_hover: Arc::new(AtomicBool::new(false)),
-            quick_generation: Arc::new(AtomicU64::new(0)),
             wake: Arc::new((Mutex::new(false), Condvar::new())),
         })
     }
@@ -326,6 +320,11 @@ impl Engine {
             return Ok(view);
         }
         let current_processes = core.collect_processes(&view.processes);
+        let before_active: HashSet<_> = view.processes.iter().map(|p| p.agent.as_str()).collect();
+        let after_active: HashSet<_> = current_processes.iter().map(|p| p.agent.as_str()).collect();
+        if core.process_activity_initialized && before_active != after_active {
+            self.request_scan();
+        }
         for event in activity::process_events(
             &view.processes,
             &current_processes,
@@ -946,6 +945,18 @@ fn refresh(engine: tauri::State<Engine>) {
     engine.request_scan();
 }
 #[tauri::command]
+async fn refresh_process_analysis(
+    app: tauri::AppHandle,
+    engine: tauri::State<'_, Engine>,
+) -> Result<Snapshot, String> {
+    let engine = engine.inner().clone();
+    let snapshot = tauri::async_runtime::spawn_blocking(move || engine.sample())
+        .await
+        .map_err(|error| error.to_string())??;
+    let _ = app.emit("snapshot", &snapshot);
+    Ok(snapshot)
+}
+#[tauri::command]
 fn set_monitoring(engine: tauri::State<Engine>, enabled: bool) {
     engine.paused.store(!enabled, Ordering::Relaxed);
     if enabled {
@@ -1366,97 +1377,8 @@ fn request_stop_checked(
     Ok(())
 }
 
-#[derive(Clone, Copy)]
-struct ScreenRect {
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-}
-impl ScreenRect {
-    fn contains(self, x: f64, y: f64) -> bool {
-        x >= self.x && x <= self.x + self.width && y >= self.y && y <= self.y + self.height
-    }
-}
-fn in_quicklook_region(x: f64, y: f64, tray: ScreenRect, panel: ScreenRect) -> bool {
-    // Include the gap between the tray and panel so slow pointer movement is
-    // safe. All rectangles and pointer coordinates use physical desktop pixels.
-    let bridge_top = (tray.y + tray.height).min(panel.y + panel.height);
-    let bridge_bottom = tray.y.max(panel.y);
-    tray.contains(x, y)
-        || panel.contains(x, y)
-        || (x >= panel.x && x <= panel.x + panel.width && y >= bridge_top && y <= bridge_bottom)
-}
-fn quick_pointer_inside(app: &tauri::AppHandle, tray: ScreenRect) -> Option<bool> {
-    let panel = app.get_webview_window("quicklook")?;
-    let pointer = app.cursor_position().ok()?;
-    let origin = panel.outer_position().ok()?;
-    let size = panel.outer_size().ok()?;
-    Some(in_quicklook_region(
-        pointer.x,
-        pointer.y,
-        tray,
-        ScreenRect {
-            x: origin.x as f64,
-            y: origin.y as f64,
-            width: size.width as f64,
-            height: size.height as f64,
-        },
-    ))
-}
-fn monitor_quicklook_pointer(app: tauri::AppHandle, tray: ScreenRect, generation: u64) {
-    std::thread::spawn(move || {
-        let mut outside_since = None;
-        loop {
-            std::thread::sleep(Duration::from_millis(100));
-            let engine = app.state::<Engine>();
-            if engine.quick_generation.load(Ordering::Relaxed) != generation {
-                return;
-            }
-            let inside = quick_pointer_inside(&app, tray).unwrap_or_else(|| {
-                engine.quick_hover.load(Ordering::Relaxed)
-                    || engine.tray_hover.load(Ordering::Relaxed)
-            });
-            if inside {
-                outside_since = None;
-                continue;
-            }
-            let since = outside_since.get_or_insert_with(std::time::Instant::now);
-            if since.elapsed() < Duration::from_millis(600) {
-                continue;
-            }
-            let handle = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                let engine = handle.state::<Engine>();
-                // Recheck after dispatch: an older hide must not close a panel
-                // that was reopened, or one the pointer has just entered.
-                if engine.quick_generation.load(Ordering::Relaxed) == generation
-                    && !quick_pointer_inside(&handle, tray).unwrap_or_else(|| {
-                        engine.quick_hover.load(Ordering::Relaxed)
-                            || engine.tray_hover.load(Ordering::Relaxed)
-                    })
-                {
-                    hide_quicklook(handle);
-                }
-            });
-        }
-    });
-}
-#[tauri::command]
-fn quick_hover(engine: tauri::State<Engine>, hover: bool) {
-    engine.quick_hover.store(hover, Ordering::Relaxed);
-}
 #[tauri::command]
 fn hide_quicklook(app: tauri::AppHandle) {
-    app.state::<Engine>()
-        .quick_generation
-        .fetch_add(1, Ordering::Relaxed);
-    app.state::<Engine>()
-        .quick_hover
-        .store(false, Ordering::Relaxed);
-    app.state::<Engine>()
-        .tray_hover
-        .store(false, Ordering::Relaxed);
     if let Some(w) = app.get_webview_window("quicklook") {
         let _ = w.hide();
     }
@@ -1476,9 +1398,6 @@ fn open_main(app: tauri::AppHandle, page: String) -> Result<(), String> {
     Ok(())
 }
 fn show_quicklook(app: &tauri::AppHandle, rect: tauri::Rect) {
-    let engine = app.state::<Engine>();
-    engine.tray_hover.store(true, Ordering::Relaxed);
-    let generation = engine.quick_generation.fetch_add(1, Ordering::Relaxed) + 1;
     if let Some(w) = app.get_webview_window("quicklook") {
         let fallback_scale = w.scale_factor().unwrap_or(1.0);
         let pos = rect.position.to_physical::<f64>(fallback_scale);
@@ -1515,16 +1434,7 @@ fn show_quicklook(app: &tauri::AppHandle, rect: tauri::Rect) {
         let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
         let _ = w.set_size(tauri::LogicalSize::new(344.0, 372.0));
         let _ = w.show();
-        monitor_quicklook_pointer(
-            app.clone(),
-            ScreenRect {
-                x: pos.x,
-                y: pos.y,
-                width: size.width,
-                height: size.height,
-            },
-            generation,
-        );
+        let _ = w.set_focus();
     }
 }
 #[cfg(target_os = "macos")]
@@ -1670,17 +1580,20 @@ pub fn run() {
                 .on_tray_icon_event(|tray, event| {
                     let app = tray.app_handle();
                     match event {
-                        tauri::tray::TrayIconEvent::Enter { rect, .. } => show_quicklook(app, rect),
                         tauri::tray::TrayIconEvent::Click {
                             rect,
                             button: tauri::tray::MouseButton::Left,
                             button_state: tauri::tray::MouseButtonState::Up,
                             ..
-                        } => show_quicklook(app, rect),
-                        tauri::tray::TrayIconEvent::Leave { .. } => {
-                            app.state::<Engine>()
-                                .tray_hover
-                                .store(false, Ordering::Relaxed);
+                        } => {
+                            let visible = app
+                                .get_webview_window("quicklook")
+                                .is_some_and(|window| window.is_visible().unwrap_or(false));
+                            if visible {
+                                hide_quicklook(app.clone());
+                            } else {
+                                show_quicklook(app, rect);
+                            }
                         }
                         _ => {}
                     }
@@ -1843,6 +1756,10 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "quicklook" && matches!(event, tauri::WindowEvent::Focused(false))
+            {
+                hide_quicklook(window.app_handle().clone());
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
@@ -1858,6 +1775,7 @@ pub fn run() {
             inventory_details,
             full_rescan,
             refresh,
+            refresh_process_analysis,
             set_monitoring,
             save_settings,
             add_root,
@@ -1866,7 +1784,6 @@ pub fn run() {
             execute_cleanup,
             stop_process,
             stop_suggested_process,
-            quick_hover,
             hide_quicklook,
             open_main
         ])
@@ -1881,62 +1798,19 @@ pub fn probe(path: &Path) -> Result<serde_json::Value, String> {
     engine.sample()?;
     engine.run_inventory(true, &|_| {})?;
     let snapshot = engine.sample()?;
-    Ok(
-        serde_json::json!({"platform":snapshot.platform,"files":snapshot.file_count,"roots":snapshot.roots.len(),"processes":snapshot.processes.len(),"sessions":snapshot.sessions.len(),"systemMemory":snapshot.total_memory,"usedMemory":snapshot.used_memory,"scanComplete":snapshot.scan_complete,"warnings":snapshot.warnings,"elapsedMs":started.elapsed().as_millis(),"agents":snapshot.agents}),
-    )
-}
-
-#[cfg(test)]
-mod quicklook_tests {
-    use super::*;
-
-    #[test]
-    fn menu_panel_and_slow_transition_gap_remain_interactive() {
-        let tray = ScreenRect {
-            x: 500.0,
-            y: 0.0,
-            width: 110.0,
-            height: 37.0,
-        };
-        let panel = ScreenRect {
-            x: 383.0,
-            y: 43.0,
-            width: 344.0,
-            height: 372.0,
-        };
-        assert!(in_quicklook_region(555.0, 18.0, tray, panel));
-        assert!(in_quicklook_region(555.0, 40.0, tray, panel));
-        assert!(in_quicklook_region(555.0, 350.0, tray, panel));
-        assert!(!in_quicklook_region(750.0, 200.0, tray, panel));
-        assert!(!in_quicklook_region(555.0, 440.0, tray, panel));
-    }
-
-    #[test]
-    fn hover_regions_support_scaled_negative_coordinates_and_panels_above_tray() {
-        let tray = ScreenRect {
-            x: -1200.0,
-            y: -2160.0,
-            width: 220.0,
-            height: 48.0,
-        };
-        let panel = ScreenRect {
-            x: -1434.0,
-            y: -2100.0,
-            width: 688.0,
-            height: 744.0,
-        };
-        assert!(in_quicklook_region(-1100.0, -2106.0, tray, panel));
-        assert!(in_quicklook_region(-1400.0, -1400.0, tray, panel));
-        assert!(!in_quicklook_region(-700.0, -2000.0, tray, panel));
-        let above = ScreenRect {
-            x: -1434.0,
-            y: -2916.0,
-            width: 688.0,
-            height: 744.0,
-        };
-        assert!(in_quicklook_region(-1100.0, -2166.0, tray, above));
-        assert!(!in_quicklook_region(-700.0, -2166.0, tray, above));
-    }
+    Ok(serde_json::json!({
+        "platform": snapshot.platform,
+        "files": snapshot.file_count,
+        "roots": snapshot.roots.len(),
+        "processes": snapshot.processes.len(),
+        "sessions": snapshot.sessions.len(),
+        "systemMemory": snapshot.total_memory,
+        "usedMemory": snapshot.used_memory,
+        "scanComplete": snapshot.scan_complete,
+        "warnings": snapshot.warnings,
+        "elapsedMs": started.elapsed().as_millis(),
+        "agents": snapshot.agents,
+    }))
 }
 
 #[cfg(test)]

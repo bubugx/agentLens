@@ -10,12 +10,7 @@ import {
   RotateCw,
 } from "lucide-vue-next";
 import { t, rootLabel } from "../lib/i18n";
-import {
-  bytes,
-  compactPath,
-  AGENT_META,
-  type InventoryDetails,
-} from "../lib/types";
+import { bytes, compactPath, AGENT_META, type InventoryDetails } from "../lib/types";
 import * as client from "../lib/client";
 import { message } from "../lib/notifications";
 import Modal from "./Modal.vue";
@@ -34,12 +29,8 @@ const data = ref<InventoryDetails | null>(null),
   error = ref("");
 let generation = 0,
   timer: ReturnType<typeof setTimeout> | undefined;
-const group = computed(() =>
-  data.value?.groups.find((g) => g.id === root.value),
-);
-const groupTotal = computed(
-  () => data.value?.groups.reduce((s, g) => s + g.bytes, 0) || 0,
-);
+const group = computed(() => data.value?.groups.find((g) => g.id === root.value));
+const groupTotal = computed(() => data.value?.groups.reduce((s, g) => s + g.bytes, 0) || 0);
 async function load() {
   const request = ++generation;
   loading.value = true;
@@ -91,22 +82,22 @@ onBeforeUnmount(() => {
   >
     <div class="inventory-summary">
       <div>
-        <span>{{ t("Category footprint") }}</span><strong>{{
-          data ? bytes(data.bytes) : "—"
-        }}</strong>
+        <span>{{ t("Category footprint") }}</span>
+        <strong>{{ data ? bytes(data.bytes) : "—" }}</strong>
       </div>
       <div>
-        <span>{{ t("Files") }}</span><strong>{{
-          data?.count.toLocaleString() ?? "—"
-        }}</strong>
+        <span>{{ t("Files") }}</span>
+        <strong>{{ data?.count.toLocaleString() ?? "—" }}</strong>
       </div>
       <div>
-        <span>{{ t("Projects / directories") }}</span><strong>{{
-          root ? 1 : (data?.groups.length ?? "—")
-        }}</strong>
+        <span>{{ t("Projects / directories") }}</span>
+        <strong>{{ root ? 1 : (data?.groups.length ?? "—") }}</strong>
       </div>
     </div>
-    <p v-if="scanning" class="inventory-notice">
+    <p
+      v-if="scanning"
+      class="inventory-notice"
+    >
       {{
         t(
           "A scan is running. This view shows the last committed inventory. Refresh after the scan finishes.",
@@ -114,16 +105,23 @@ onBeforeUnmount(() => {
       }}
     </p>
     <div class="inventory-toolbar">
-      <button v-if="root" class="text-button" @click="select(null)">
-        <ArrowLeft :size="14" />{{ t("All directories") }}
+      <button
+        v-if="root"
+        class="text-button"
+        @click="select(null)"
+      >
+        <ArrowLeft :size="14" />
+        {{ t("All directories") }}
       </button>
       <span v-else>{{ t("Distribution by project / directory") }}</span>
-      <label class="inventory-search"
-        ><Search :size="14" /><input
+      <label class="inventory-search">
+        <Search :size="14" />
+        <input
           v-model="query"
           :aria-label="t('Search inventory files')"
           :placeholder="t('Search file paths…')"
-      /></label>
+        />
+      </label>
       <button
         class="icon-button"
         :aria-label="t('Refresh distribution')"
@@ -133,14 +131,25 @@ onBeforeUnmount(() => {
         <RotateCw :size="14" />
       </button>
     </div>
-    <div class="inventory-content" :aria-busy="loading">
-      <div v-if="loading && !data" class="inventory-empty">
-        <LoaderCircle class="spin" :size="23" />{{
-          t("Loading file distribution…")
-        }}
+    <div
+      class="inventory-content"
+      :aria-busy="loading"
+    >
+      <div
+        v-if="loading && !data"
+        class="inventory-empty"
+      >
+        <LoaderCircle
+          class="spin"
+          :size="23"
+        />
+        {{ t("Loading file distribution…") }}
       </div>
       <template v-else-if="data">
-        <div v-if="!root && data.groups.length" class="inventory-groups">
+        <div
+          v-if="!root && data.groups.length"
+          class="inventory-groups"
+        >
           <button
             v-for="g in data.groups"
             :key="g.id"
@@ -149,36 +158,38 @@ onBeforeUnmount(() => {
             @click="select(g.id)"
           >
             <span class="inventory-folder"><Folder :size="17" /></span>
-            <span class="inventory-group-copy"
-              ><strong
-                >{{ rootLabel(g.label)
-                }}<small>{{
-                  t(AGENT_META[g.agent]?.name || g.agent)
-                }}</small></strong
-              ><span :title="g.path">{{ compactPath(g.path) }}</span
-              ><i
-                ><b
+            <span class="inventory-group-copy">
+              <strong>
+                {{ rootLabel(g.label) }}
+                <small>{{ t(AGENT_META[g.agent]?.name || g.agent) }}</small>
+              </strong>
+              <span :title="g.path">{{ compactPath(g.path) }}</span>
+              <i>
+                <b
                   :style="{
                     width: `${Math.max(1, (g.bytes / Math.max(1, groupTotal)) * 100)}%`,
-                  }" /></i
-            ></span>
-            <span class="inventory-group-size"
-              ><strong>{{ bytes(g.bytes) }}</strong
-              ><small
-                >{{ t("{0} files", g.count.toLocaleString()) }} ·
-                {{
-                  ((g.bytes / Math.max(1, groupTotal)) * 100).toFixed(1)
-                }}%</small
-              ></span
-            ><ChevronRight :size="15" />
+                  }"
+                />
+              </i>
+            </span>
+            <span class="inventory-group-size">
+              <strong>{{ bytes(g.bytes) }}</strong>
+              <small>
+                {{ t("{0} files", g.count.toLocaleString()) }} ·
+                {{ ((g.bytes / Math.max(1, groupTotal)) * 100).toFixed(1) }}%
+              </small>
+            </span>
+            <ChevronRight :size="15" />
           </button>
         </div>
         <div class="inventory-file-heading">
-          <strong>{{
-            group ? rootLabel(group.label) : t("Files in this category")
-          }}</strong><span>{{ t("Largest first") }}</span>
+          <strong>{{ group ? rootLabel(group.label) : t("Files in this category") }}</strong>
+          <span>{{ t("Largest first") }}</span>
         </div>
-        <div v-if="data.files.length" class="inventory-files">
+        <div
+          v-if="data.files.length"
+          class="inventory-files"
+        >
           <FileRow
             v-for="file in data.files"
             :key="file.id"
@@ -186,18 +197,23 @@ onBeforeUnmount(() => {
             @reveal="client.reveal(file.path).catch((e) => (error = String(e)))"
           />
         </div>
-        <div v-else class="inventory-empty">
+        <div
+          v-else
+          class="inventory-empty"
+        >
           {{ t("No files match this filter.") }}
         </div>
         <div class="inventory-pagination">
-          <span>{{
-            t(
-              "{0}–{1} of {2} files",
-              data.count ? offset + 1 : 0,
-              Math.min(offset + data.limit, data.count),
-              data.count.toLocaleString(),
-            )
-          }}</span>
+          <span>
+            {{
+              t(
+                "{0}–{1} of {2} files",
+                data.count ? offset + 1 : 0,
+                Math.min(offset + data.limit, data.count),
+                data.count.toLocaleString(),
+              )
+            }}
+          </span>
           <button
             class="button secondary small"
             :disabled="offset === 0 || loading"
@@ -217,10 +233,13 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </div>
-    <template #footer
-      ><button class="button secondary" @click="$emit('close')">
+    <template #footer>
+      <button
+        class="button secondary"
+        @click="$emit('close')"
+      >
         {{ t("Close") }}
-      </button></template
-    >
+      </button>
+    </template>
   </Modal>
 </template>

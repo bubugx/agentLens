@@ -84,6 +84,8 @@ pub struct ProcessObservation {
     pub idle_samples: u32,
     pub disk_read: u64,
     pub disk_written: u64,
+    #[serde(default)]
+    pub io_readable: bool,
     pub io_known: bool,
     pub watch_mode: bool,
 }
