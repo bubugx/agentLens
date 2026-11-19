@@ -52,6 +52,8 @@ JSONL 会话文件逐个最多读取前 **64 KiB、16 条记录**，尝试提取
 
 自定义应用可通过精确可执行文件规则接入，Node / Python 共享运行时还需精确入口。目录显式声明 project、cache、logs 或 temporary；父链与目录重叠边界见 [接入指南](agent-adoption.md)。
 
+每轮显式刷新用户、可执行文件、启动参数和工作目录，避免默认刷新遗漏后启动的进程，也能观察 exec / cwd 变化。
+
 用途结合进程名、可执行路径与启动参数，区分 Agent 引擎、编辑器渲染器、扩展宿主、GPU / 网络服务、MCP、开发服务、构建 / 测试任务与 Shell。展示用途证据、建议、工作目录、父进程、运行时长、资源变化与停止影响。
 
 自动分类互斥覆盖全部进程：suggested、active、keep、observing、review、protected。构建 / 测试孤儿任务需要至少 5 分钟连续空闲和可读 I/O 证据；常驻服务保留，等待证据自动观测，用途不明继续复核。macOS 使用 proc_pid_rusage，Linux 使用 /proc/PID/io，Windows 使用 GetProcessIoCounters；只有系统调用成功的零计数才能作为有效无活动证据，失败不会伪造零读写。

@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
-use sysinfo::{Pid, ProcessesToUpdate, System};
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use walkdir::WalkDir;
 
 pub const AGENTS: &[(&str, &str)] = &[
@@ -847,7 +847,21 @@ pub fn processes(
     definitions: &[AgentDefinition],
     bindings: &[AgentBinding],
 ) -> Vec<ProcessEntry> {
-    system.refresh_processes(ProcessesToUpdate::All, true);
+    // The default refresh omits UID, argv and cwd on Linux. New descendants
+    // need these fields on every sample, including after an exec or cwd change.
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing()
+            .with_memory()
+            .with_cpu()
+            .with_disk_usage()
+            .with_user(UpdateKind::Always)
+            .with_exe(UpdateKind::Always)
+            .with_cmd(UpdateKind::Always)
+            .with_cwd(UpdateKind::Always)
+            .with_tasks(),
+    );
     system.refresh_memory();
     let own_user = sysinfo::get_current_pid()
         .ok()
