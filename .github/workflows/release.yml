@@ -50,7 +50,8 @@ jobs:
               for (const run of data.workflow_runs) {
                 if (run.id === context.runId || run.status === 'completed' || run.id > context.runId) continue;
                 if (workflow_id === 'desktop.yml' && (run.event !== 'push' || run.head_sha === context.sha)) continue;
-                await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id});
+                try { await github.rest.actions.cancelWorkflowRun({...context.repo, run_id: run.id}); }
+                catch (e) { if (![409, 422].includes(e.status)) throw e; }
               }
             }
       - name: Prepare a draft release

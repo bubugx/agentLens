@@ -1185,7 +1185,9 @@ mod tests {
             let path = base.join(name);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(&path, "fixture").unwrap();
-            fs::File::open(&path)
+            fs::OpenOptions::new()
+                .write(true)
+                .open(&path)
                 .unwrap()
                 .set_times(fs::FileTimes::new().set_modified(
                     UNIX_EPOCH + std::time::Duration::from_secs(now() - days * 86400),

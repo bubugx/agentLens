@@ -2047,8 +2047,10 @@ mod adoption_engine_tests {
                 std::thread::sleep(std::time::Duration::from_secs(90));
             } else if args.get(1).map(String::as_str) == Some("--worker") {
                 let control = std::env::current_exe().unwrap().parent().unwrap().join("spawn-grandchild");
+                std::fs::write(control.with_file_name("worker-ready"), control.to_string_lossy().as_bytes()).unwrap();
                 while !control.exists() { std::thread::sleep(std::time::Duration::from_millis(10)); }
                 let mut child = std::process::Command::new(std::env::current_exe().unwrap()).arg("--grandchild").spawn().unwrap();
+                std::fs::write(control.with_file_name("spawned-child"), child.id().to_string()).unwrap();
                 let _ = child.wait();
             } else {
                 let mut child = std::process::Command::new(&args[1]).arg("--worker").spawn().unwrap();
@@ -2253,7 +2255,37 @@ mod adoption_engine_tests {
                         return;
                     }
                 }
-                panic!("new descendants of an observed orphan must also remain tracked");
+                let current = System::new_all();
+                let fixture_processes = current
+                    .processes()
+                    .iter()
+                    .filter(|(_, p)| p.exe().is_some_and(|exe| exe == &worker))
+                    .map(|(pid, p)| {
+                        (
+                            pid.as_u32(),
+                            p.parent().map(|id| id.as_u32()),
+                            p.start_time(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                let tracked = engine
+                    .view
+                    .read()
+                    .unwrap()
+                    .processes
+                    .iter()
+                    .filter(|p| p.agent == ephemeral)
+                    .map(|p| {
+                        (
+                            p.pid,
+                            p.parent_pid,
+                            p.start_time,
+                            p.orphan,
+                            p.evidence.clone(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                panic!("new descendants of an observed orphan must also remain tracked: monitor={:?}, fixture={fixture_processes:?}, tracked={tracked:?}, ready={:?}, spawned={:?}", sysinfo::get_current_pid(), fs::read_to_string(directory.path().join("worker-ready")), fs::read_to_string(directory.path().join("spawned-child")));
             }
         }
         panic!("a previously observed worker remains attributed when its adopted parent exits");
