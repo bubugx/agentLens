@@ -2,15 +2,15 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。当前版本为 0.1.2，0.1.0 与 0.1.1 为前期构建草稿。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
+从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。当前正式版本为 [0.1.2](https://github.com/bubugx/agentLens/releases/tag/v0.1.2)，已发布五个安装包、介绍视频、字幕与校验文件；0.1.0 与 0.1.1 为前期构建草稿。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
 
 | 系统 | 下载文件 | 安装方式 |
 | --- | --- | --- |
-| macOS Apple Silicon | 文件名含 `aarch64.dmg` | 打开 DMG，将 AgentLens 拖入 Applications |
-| macOS Intel | 文件名含 `x64.dmg` | 同上，选择 Intel 对应包 |
-| Windows x64 | `x64-setup.exe` | 运行安装程序，需要 WebView2；安装器按需处理运行时 |
-| Linux x64 / Debian、Ubuntu | `amd64.deb` | 使用系统软件安装器，或 `sudo apt install ./AgentLens_版本_amd64.deb` |
-| Linux x64 / 其他发行版 | `amd64.AppImage` | 赋予执行权限后运行；桌面环境需具备 WebKitGTK 4.1 等运行依赖 |
+| macOS Apple Silicon | [aarch64.dmg](https://github.com/bubugx/agentLens/releases/download/v0.1.2/AgentLens_0.1.2_aarch64.dmg) | 打开 DMG，将 AgentLens 拖入 Applications |
+| macOS Intel | [x64.dmg](https://github.com/bubugx/agentLens/releases/download/v0.1.2/AgentLens_0.1.2_x64.dmg) | 同上，选择 Intel 对应包 |
+| Windows x64 | [x64-setup.exe](https://github.com/bubugx/agentLens/releases/download/v0.1.2/AgentLens_0.1.2_x64-setup.exe) | 运行安装程序，需要 WebView2；安装器按需处理运行时 |
+| Linux x64 / Debian、Ubuntu | [amd64.deb](https://github.com/bubugx/agentLens/releases/download/v0.1.2/AgentLens_0.1.2_amd64.deb) | 使用系统软件安装器，或 `sudo apt install ./AgentLens_版本_amd64.deb` |
+| Linux x64 / 其他发行版 | [amd64.AppImage](https://github.com/bubugx/agentLens/releases/download/v0.1.2/AgentLens_0.1.2_amd64.AppImage) | 赋予执行权限后运行；桌面环境需具备 WebKitGTK 4.1 等运行依赖 |
 
 macOS 配置的最低版本为 12.0；发布产物仍应在目标系统实测。Linux CI 基于 Ubuntu 22.04，AppImage 不保证兼容更旧的 glibc。当前 macOS 使用 ad-hoc 签名，尚未 Developer ID 签名与公证；首次打开时可按系统提示在「隐私与安全性」确认来源。Windows 尚未配置 Authenticode 签名。
 
@@ -22,7 +22,7 @@ macOS 配置的最低版本为 12.0；发布产物仍应在目标系统实测。
 
 发布工作流：[release.yml](../.github/workflows/release.yml)。日常提交与 PR 先运行 [桌面检查](../.github/workflows/desktop.yml)。
 
-1. 完成功能和必要验证，在 [CHANGELOG](../CHANGELOG.md) 添加版本章节，例如 `## 0.2.0`。
+1. 完成功能和必要验证，在 [CHANGELOG](../CHANGELOG.md) 添加版本章节，例如 `## 0.2.0`，并同步 README 与本文中的版本和下载链接。
 2. 运行 `npm run version:set -- 0.2.0`，同步 npm、npm 锁文件、Cargo、Cargo 锁文件和桌面配置。运行 `npm run version:check` 验证一致性。
 3. 提交代码并推送到 GitHub，然后创建并推送对应标签：
 
@@ -35,7 +35,7 @@ macOS 配置的最低版本为 12.0；发布产物仍应在目标系统实测。
 4. 在 Actions 中检查发布工作流。它校验版本与标签、运行测试，先创建草稿，再构建四个平台目标的 DMG、EXE、DEB 和 AppImage。
 5. 全部目标成功后，工作流生成 SHA-256 文件，附上介绍视频和字幕，最后公开 Release。任一构建失败，Release 保持草稿，用户不会误下载不完整的正式版。
 
-工作流仅使用仓库内置 `GITHUB_TOKEN` 的 `contents: write`，无需个人访问令牌。仓库需允许 GitHub Actions 运行。后续配置签名证书时，使用 GitHub Secrets，不将证书、口令或私钥提交到 Git。
+工作流使用仓库内置 `GITHUB_TOKEN`，无需个人访问令牌。`contents: write` 用于管理 Release 与附件，准备阶段的 `actions: write` 用于取消旧源码的未完成构建；各作业分别声明权限。仓库需允许 GitHub Actions 运行。后续配置签名证书时，使用 GitHub Secrets，不将证书、口令或私钥提交到 Git。
 
 ## 失败重试与版本管理
 
