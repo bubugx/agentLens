@@ -78,6 +78,7 @@ export function categoryLabel(category: string) {
         temporary: "Temporary",
         logs: "Logs",
         settings: "Settings",
+        application: "Application resources",
         project: "Project",
         other: "Other",
       } as Record<string, string>

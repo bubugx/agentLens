@@ -290,13 +290,16 @@ mod tests {
             entrypoint(exe, &args(&[exe, "-c", "print('x')", "my_agent"]), "/tmp"),
             ""
         );
+        let project = tempfile::tempdir().unwrap();
+        let worker = project.path().join("worker.js");
+        std::fs::write(&worker, "// relative runtime entry fixture").unwrap();
         assert_eq!(
             entrypoint(
-                "/bin/node",
+                "node",
                 &args(&["node", "worker.js"]),
-                "/projects/agent"
+                project.path().to_str().unwrap()
             ),
-            "/projects/agent/worker.js"
+            std::fs::canonicalize(worker).unwrap().to_string_lossy()
         );
     }
     #[test]

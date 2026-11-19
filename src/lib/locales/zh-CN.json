@@ -301,7 +301,6 @@
   "View activity": "查看记录",
   "All done": "完成",
   "A little more about AgentLens": "关于 AgentLens",
-  "Your agents, in focus. Version 0.1.0": "Agent 资源监测工具 · 0.1.0",
   "Built to keep your workspace light.": "掌握资源占用，保持工作区整洁。",
   "AgentLens observes known agent directories and same-user process trees. File sizes are logical sizes. Session discovery is bounded and never retains conversation content. Unobserved writers and process-to-session mappings remain unknown.": "AgentLens 监测已知 Agent 目录和同用户进程树，文件大小按逻辑大小统计，不保留会话正文；缺少证据的归属保持未知。",
   "Browser preview uses a sample workspace. Launch the desktop app to monitor this computer.": "浏览器展示示例工作区，启动桌面应用后监测本机资源。",
@@ -350,7 +349,6 @@
   "Unknown project": "未知项目",
   "Details": "查看详情",
   "Try again": "重试",
-  "AgentLens 0.1.0": "AgentLens 0.1.0",
   "Every": "每",
   "seconds": "秒",
   "day": "天",
@@ -870,5 +868,7 @@
   "{0} older files ({1}) are retained while their Agent is running. They will be reassessed automatically when it exits.": "有 {0} 个旧文件（{1}）因所属 Agent 仍在运行而保留；退出后会自动重新评估。",
   "{0} files are awaiting a second stable observation. AgentLens will recheck them automatically.": "有 {0} 个文件正在等待第二次稳定观测，应用将自动复查。",
   "Files are within retention or protected by your rules. No files currently qualify for cleanup.": "文件仍在保留期内或受规则保护，当前没有满足清理条件的文件。",
-  "Desktop apps do not need a CLI. Use the executable inside the app; leave the script entry point empty.": "桌面应用无需 CLI：填写应用内的可执行文件，脚本入口留空。"
+  "Desktop apps do not need a CLI. Use the executable inside the app; leave the script entry point empty.": "桌面应用无需 CLI：填写应用内的可执行文件，脚本入口留空。",
+  "Your agents, in focus. Version {0}": "Agent 资源监测工具 · {0}",
+  "Application resources": "应用安装资源"
 }

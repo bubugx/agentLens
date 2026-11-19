@@ -2,7 +2,7 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
+从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。当前正式版本为 0.1.1，0.1.0 为初轮构建草稿。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
 
 | 系统 | 下载文件 | 安装方式 |
 | --- | --- | --- |
@@ -17,6 +17,8 @@ macOS 配置的最低版本为 12.0；发布产物仍应在目标系统实测。
 同一 Release 提供 `SHA256SUMS.txt`，可用 macOS 的 `shasum -a 256 文件名`、Linux 的 `sha256sum 文件名` 或 PowerShell 的 `Get-FileHash 文件名 -Algorithm SHA256` 核对下载完整性。校验文件用于完整性核对，不替代签名。
 
 ## 维护者发布步骤
+
+发布准备会取消旧源码仍未完成的构建，旧标签与草稿保留用于核查；已公开版本不会覆盖。
 
 发布工作流：[release.yml](../.github/workflows/release.yml)。日常提交与 PR 先运行 [桌面检查](../.github/workflows/desktop.yml)。
 

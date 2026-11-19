@@ -13,7 +13,7 @@
 
 ![AgentLens 总览：磁盘、内存、趋势与 Agent 分布（预览模式，示例数据）](docs/screenshots/overview-zh.png)
 
-> 当前版本 **0.1.0**。从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 获取桌面包，或从源码运行。桌面端采集本机真实数据；浏览器预览使用明确标识的示例数据。发布目标包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64；平台可用性以实际构建结果和附件为准。
+> 当前版本 **0.1.1**。从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 获取桌面包，或从源码运行。桌面端采集本机真实数据；浏览器预览使用明确标识的示例数据。发布目标包含 macOS Apple Silicon / Intel、Windows x64 和 Linux x64；平台可用性以实际构建结果和附件为准。
 
 ## 为什么做 AgentLens
 

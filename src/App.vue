@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import packageInfo from "../package.json";
 import { purposeLabel, stopImpact } from "./lib/processes";
 import { t, locale, theme, customBase, customAccent, setLocale, setTheme } from "./lib/i18n";
 import UiSelect from "./components/UiSelect.vue";
@@ -1021,7 +1022,7 @@ function search() {
     <Modal
       v-if="about"
       :title="t('A little more about AgentLens')"
-      :subtitle="t('Your agents, in focus. Version 0.1.0')"
+      :subtitle="t('Your agents, in focus. Version {0}', packageInfo.version)"
       @close="about = false"
     >
       <div class="about-logo">

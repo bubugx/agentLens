@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 const json = (path) => JSON.parse(readFileSync(path, "utf8"));
 const pkg = json("package.json");
 const tauri = json("src-tauri/tauri.conf.json");
-const cargo = readFileSync("src-tauri/Cargo.toml", "utf8");
+const cargo = readFileSync("src-tauri/Cargo.toml", "utf8").replace(/\r\n/g, "\n");
 const cargoVersion = cargo.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 const lock = json("package-lock.json");
-const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8");
+const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8").replace(/\r\n/g, "\n");
 const cargoLockVersion = cargoLock.match(
   /\[\[package\]\]\nname = "agentlens"\nversion = "([^"]+)"/,
 )?.[1];
