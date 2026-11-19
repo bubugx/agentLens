@@ -22,7 +22,9 @@ use std::{
     time::Duration,
 };
 use store::Store;
-use sysinfo::{Disks, Pid, Signal, System};
+#[cfg(unix)]
+use sysinfo::Signal;
+use sysinfo::{Disks, Pid, System};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -1107,11 +1109,11 @@ fn ancestry(path: &Path, root: &Path) -> Result<HashMap<String, String>, String>
     let mut result = HashMap::new();
     let mut p = path.parent();
     while let Some(parent) = p {
-        let meta = fs::symlink_metadata(parent).map_err(|e| e.to_string())?;
+        let _meta = fs::symlink_metadata(parent).map_err(|e| e.to_string())?;
         #[cfg(unix)]
         let identity = {
             use std::os::unix::fs::MetadataExt;
-            format!("{}:{}", meta.dev(), meta.ino())
+            format!("{}:{}", _meta.dev(), _meta.ino())
         };
         #[cfg(not(unix))]
         let identity = windows_identity(parent)

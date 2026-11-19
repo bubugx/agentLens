@@ -1246,7 +1246,7 @@ mod tests {
             result
                 .files
                 .iter()
-                .find(|f| f.relative_path == name)
+                .find(|f| Path::new(&f.relative_path) == Path::new(name))
                 .unwrap()
         };
         assert!(!get("sessions/latest.jsonl").eligible);
@@ -1401,7 +1401,7 @@ mod tests {
         for (_, v) in stable.iter_mut() {
             v.1 -= 20;
         }
-        let second = scan(
+        let _second = scan(
             &[r.clone()],
             &HashMap::new(),
             &HashSet::new(),
@@ -1409,7 +1409,7 @@ mod tests {
             &CleanupPolicy::default(),
         );
         #[cfg(unix)]
-        assert_eq!(second.files.iter().filter(|f| f.eligible).count(), 1);
+        assert_eq!(_second.files.iter().filter(|f| f.eligible).count(), 1);
         let active = HashSet::from(["codex".to_string()]);
         assert!(!scan(
             &[r],

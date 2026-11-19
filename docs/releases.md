@@ -2,7 +2,7 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。当前正式版本为 0.1.1，0.1.0 为初轮构建草稿。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
+从 [GitHub Releases](https://github.com/bubugx/agentLens/releases/latest) 选择对应系统的安装文件。当前版本为 0.1.2，0.1.0 与 0.1.1 为前期构建草稿。正式版与源码标签一一对应；测试版单独标记为 Pre-release。
 
 | 系统 | 下载文件 | 安装方式 |
 | --- | --- | --- |
