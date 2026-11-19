@@ -1,0 +1,32 @@
+[
+  {
+    "width": 1440,
+    "theme": "light",
+    "summaryToTriageGap": 20,
+    "triageToAnalysisGap": 20,
+    "overflow": false,
+    "rows": [
+      {
+        "width": 1013,
+        "scrollWidth": 1013,
+        "hidden": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1080,
+    "theme": "dark",
+    "summaryToTriageGap": 20,
+    "triageToAnalysisGap": 20,
+    "overflow": false,
+    "rows": [
+      {
+        "width": 694,
+        "scrollWidth": 694,
+        "hidden": false
+      }
+    ],
+    "errors": []
+  }
+]

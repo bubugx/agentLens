@@ -1,0 +1,141 @@
+{
+  "validatedAt": "2026-11-18T16:13:58.398Z",
+  "results": [
+    {
+      "language": "zh-CN",
+      "theme": "light",
+      "viewport": {
+        "width": 1080,
+        "height": 740
+      },
+      "width": 690,
+      "height": 666,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "zh-CN",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "width": 690,
+      "height": 834.5625,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "zh-CN",
+      "theme": "dark",
+      "viewport": {
+        "width": 1080,
+        "height": 740
+      },
+      "width": 690,
+      "height": 666,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "zh-CN",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "width": 690,
+      "height": 834.5625,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "en-US",
+      "theme": "light",
+      "viewport": {
+        "width": 1080,
+        "height": 740
+      },
+      "width": 690,
+      "height": 666,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "en-US",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "width": 690,
+      "height": 824.5625,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "en-US",
+      "theme": "dark",
+      "viewport": {
+        "width": 1080,
+        "height": 740
+      },
+      "width": 683.93994140625,
+      "height": 660.1508178710938,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "language": "en-US",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "width": 690,
+      "height": 824.5625,
+      "overflows": false,
+      "footerVisible": true,
+      "controlHeights": [
+        36,
+        36,
+        36
+      ]
+    }
+  ]
+}

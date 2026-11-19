@@ -1,0 +1,56 @@
+{
+  "duration": 76.2,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "voice": "zh-CN-YunxiNeural",
+  "voiceRate": "+60%",
+  "chapters": [
+    {
+      "id": "problem",
+      "start": 0.0,
+      "duration": 8.33
+    },
+    {
+      "id": "intro",
+      "start": 8.33,
+      "duration": 8.07
+    },
+    {
+      "id": "overview",
+      "start": 16.4,
+      "duration": 8.81
+    },
+    {
+      "id": "trace",
+      "start": 25.21,
+      "duration": 9.29
+    },
+    {
+      "id": "process",
+      "start": 34.5,
+      "duration": 9.27
+    },
+    {
+      "id": "architecture",
+      "start": 43.77,
+      "duration": 8.76
+    },
+    {
+      "id": "cleanup",
+      "start": 52.53,
+      "duration": 9.82
+    },
+    {
+      "id": "privacy",
+      "start": 62.35,
+      "duration": 9.32
+    },
+    {
+      "id": "outro",
+      "start": 71.67,
+      "duration": 4.53
+    }
+  ],
+  "subtitles": 33
+}

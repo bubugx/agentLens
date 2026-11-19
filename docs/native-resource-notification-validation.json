@@ -1,0 +1,20 @@
+{
+  "activityNavigation" : true,
+  "application" : "debug Tauri host with current Vue frontend",
+  "automaticProcessAnalysis" : true,
+  "batchSuggestionEntry" : true,
+  "cpuReading" : true,
+  "foldProcessButtonAbsent" : true,
+  "memoryReading" : true,
+  "pid" : 16931,
+  "processLedger" : true,
+  "processNavigation" : true,
+  "processTab" : true,
+  "projectRanking" : true,
+  "realCleanupExecuted" : false,
+  "realTerminationExecuted" : false,
+  "resourceAnalysis" : true,
+  "resourceTrendAction" : true,
+  "visibleProcessReadings" : true,
+  "windowId" : 62636
+}

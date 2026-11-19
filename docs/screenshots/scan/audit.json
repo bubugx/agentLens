@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "theme": "light",
+      "language": "zh-CN",
+      "width": 1440,
+      "metrics": {
+        "scroll": 1220,
+        "client": 1220
+      },
+      "scene": {
+        "x": 252,
+        "y": 334,
+        "width": 1156,
+        "height": 414
+      }
+    },
+    {
+      "theme": "dark",
+      "language": "zh-CN",
+      "width": 1440,
+      "metrics": {
+        "scroll": 1220,
+        "client": 1220
+      },
+      "scene": {
+        "x": 252,
+        "y": 334,
+        "width": 1156,
+        "height": 414
+      }
+    },
+    {
+      "theme": "dark",
+      "language": "en-US",
+      "width": 1080,
+      "metrics": {
+        "scroll": 885,
+        "client": 885
+      },
+      "scene": {
+        "x": 227,
+        "y": 350,
+        "width": 821,
+        "height": 382
+      }
+    },
+    {
+      "theme": "light",
+      "language": "en-US",
+      "width": 760,
+      "metrics": {
+        "scroll": 582,
+        "client": 582
+      },
+      "scene": {
+        "x": 199,
+        "y": 382.390625,
+        "width": 540,
+        "height": 382
+      }
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,142 @@
+[
+  {
+    "offset": 812500,
+    "duration": 1718750,
+    "text": "Vue"
+  },
+  {
+    "offset": 2531250,
+    "duration": 1875000,
+    "text": "构建"
+  },
+  {
+    "offset": 4484160,
+    "duration": 2812500,
+    "text": "交互"
+  },
+  {
+    "offset": 9484160,
+    "duration": 2890410,
+    "text": "Tauri"
+  },
+  {
+    "offset": 12531250,
+    "duration": 1484160,
+    "text": "连接"
+  },
+  {
+    "offset": 14171660,
+    "duration": 1718750,
+    "text": "桌面"
+  },
+  {
+    "offset": 15968750,
+    "duration": 2265410,
+    "text": "能力"
+  },
+  {
+    "offset": 20187500,
+    "duration": 3125000,
+    "text": "Rust"
+  },
+  {
+    "offset": 23468750,
+    "duration": 1718750,
+    "text": "负责"
+  },
+  {
+    "offset": 25265410,
+    "duration": 2812500,
+    "text": "扫描"
+  },
+  {
+    "offset": 28234160,
+    "duration": 702910,
+    "text": "和"
+  },
+  {
+    "offset": 29015410,
+    "duration": 2734160,
+    "text": "采样"
+  },
+  {
+    "offset": 33156250,
+    "duration": 4375000,
+    "text": "SQLite"
+  },
+  {
+    "offset": 37687500,
+    "duration": 2500000,
+    "text": "保存"
+  },
+  {
+    "offset": 40265410,
+    "duration": 2109160,
+    "text": "本地"
+  },
+  {
+    "offset": 42452910,
+    "duration": 2265410,
+    "text": "索引"
+  },
+  {
+    "offset": 44875000,
+    "duration": 781250,
+    "text": "与"
+  },
+  {
+    "offset": 45734160,
+    "duration": 2421660,
+    "text": "历史"
+  },
+  {
+    "offset": 51562500,
+    "duration": 2265410,
+    "text": "文件"
+  },
+  {
+    "offset": 53906250,
+    "duration": 2890410,
+    "text": "事件"
+  },
+  {
+    "offset": 56952910,
+    "duration": 1952910,
+    "text": "配合"
+  },
+  {
+    "offset": 59062500,
+    "duration": 1952910,
+    "text": "周期"
+  },
+  {
+    "offset": 61093750,
+    "duration": 3125000,
+    "text": "复核"
+  },
+  {
+    "offset": 65781250,
+    "duration": 3281250,
+    "text": "扫描"
+  },
+  {
+    "offset": 69140410,
+    "duration": 625000,
+    "text": "与"
+  },
+  {
+    "offset": 69843750,
+    "duration": 2421660,
+    "text": "采样"
+  },
+  {
+    "offset": 72421660,
+    "duration": 1952910,
+    "text": "独立"
+  },
+  {
+    "offset": 74452910,
+    "duration": 2968750,
+    "text": "运行"
+  }
+]

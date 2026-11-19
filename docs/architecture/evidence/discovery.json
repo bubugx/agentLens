@@ -1,0 +1,74 @@
+[
+  {
+    "path": "~/.codex",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.codex/sessions",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.codex/archived_sessions",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.codex/log",
+    "exists": false,
+    "directory": false,
+    "symlink": false
+  },
+  {
+    "path": "~/.codex/tmp",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.claude",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.claude/projects",
+    "exists": false,
+    "directory": false,
+    "symlink": false
+  },
+  {
+    "path": "~/.claude/debug",
+    "exists": false,
+    "directory": false,
+    "symlink": false
+  },
+  {
+    "path": "~/.claude/cache",
+    "exists": false,
+    "directory": false,
+    "symlink": false
+  },
+  {
+    "path": "~/.claude/tmp",
+    "exists": false,
+    "directory": false,
+    "symlink": false
+  },
+  {
+    "path": "~/.cursor",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  },
+  {
+    "path": "~/.lumo/chats",
+    "exists": true,
+    "directory": true,
+    "symlink": false
+  }
+]

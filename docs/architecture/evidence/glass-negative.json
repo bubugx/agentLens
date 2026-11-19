@@ -1,0 +1,13 @@
+{
+  "command": [
+    "xcrun",
+    "swiftc",
+    "-typecheck",
+    "-target",
+    "arm64-apple-macosx14.0",
+    "GlassUnavailable.swift"
+  ],
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "GlassUnavailable.swift:4:54: error: value of type 'Text' has no member 'glassEffect'\n        if #available(macOS 26.0, *) { Text(\"Probe\").glassEffect() }\n                                       ~~~~~~~~~~~~~ ^~~~~~~~~~~\n"
+}

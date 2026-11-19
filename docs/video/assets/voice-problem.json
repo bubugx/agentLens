@@ -1,0 +1,122 @@
+[
+  {
+    "offset": 812500,
+    "duration": 1952910,
+    "text": "多个"
+  },
+  {
+    "offset": 2843750,
+    "duration": 3671660,
+    "text": "AI"
+  },
+  {
+    "offset": 7062500,
+    "duration": 1640410,
+    "text": "编码"
+  },
+  {
+    "offset": 8781250,
+    "duration": 2500000,
+    "text": "工具"
+  },
+  {
+    "offset": 11437500,
+    "duration": 2109160,
+    "text": "同时"
+  },
+  {
+    "offset": 13625000,
+    "duration": 2968750,
+    "text": "运行"
+  },
+  {
+    "offset": 18546660,
+    "duration": 3906250,
+    "text": "缓存"
+  },
+  {
+    "offset": 24562500,
+    "duration": 2890410,
+    "text": "会话"
+  },
+  {
+    "offset": 27609160,
+    "duration": 625000,
+    "text": "和"
+  },
+  {
+    "offset": 28312500,
+    "duration": 2421660,
+    "text": "后台"
+  },
+  {
+    "offset": 30812500,
+    "duration": 2656250,
+    "text": "进程"
+  },
+  {
+    "offset": 33625000,
+    "duration": 1875000,
+    "text": "不断"
+  },
+  {
+    "offset": 35577910,
+    "duration": 2577910,
+    "text": "累积"
+  },
+  {
+    "offset": 41562500,
+    "duration": 2500000,
+    "text": "磁盘"
+  },
+  {
+    "offset": 44218750,
+    "duration": 1952910,
+    "text": "为什么"
+  },
+  {
+    "offset": 46250000,
+    "duration": 2890410,
+    "text": "变满"
+  },
+  {
+    "offset": 52734160,
+    "duration": 2500000,
+    "text": "内存"
+  },
+  {
+    "offset": 55390410,
+    "duration": 625000,
+    "text": "被"
+  },
+  {
+    "offset": 56015410,
+    "duration": 1327910,
+    "text": "谁"
+  },
+  {
+    "offset": 57421660,
+    "duration": 2577910,
+    "text": "占用"
+  },
+  {
+    "offset": 63593750,
+    "duration": 2968750,
+    "text": "哪些"
+  },
+  {
+    "offset": 66640410,
+    "duration": 1952910,
+    "text": "文件"
+  },
+  {
+    "offset": 68750000,
+    "duration": 859160,
+    "text": "可以"
+  },
+  {
+    "offset": 69687500,
+    "duration": 3359160,
+    "text": "清理"
+  }
+]

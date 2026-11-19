@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "markdownFiles": 4,
+  "evidenceFiles": 16,
+  "checks": [
+    "relative artifact links",
+    "balanced code fences",
+    "JSON syntax",
+    "evidence SHA-256 integrity",
+    "req-1 through req-9 coverage markers"
+  ],
+  "problems": [],
+  "limits": "Documentation integrity only; not application validation."
+}

@@ -1,0 +1,18 @@
+{
+  "bounds": {
+    "Height": 372,
+    "Width": 344,
+    "X": 928,
+    "Y": 43
+  },
+  "hiddenAfterLeaving": true,
+  "openedOnHover": true,
+  "pauseResumeRoundtrip": true,
+  "settingsActionClosesPopover": true,
+  "slowGapTransitionVisible": true,
+  "visibleAfterPauseClick": true,
+  "visibleInside": true,
+  "checkedAt": "2026-11-18T23:23:46+08:00",
+  "pid": 64850,
+  "signatureVerification": "passed"
+}

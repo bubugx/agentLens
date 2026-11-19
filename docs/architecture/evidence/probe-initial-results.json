@@ -1,0 +1,52 @@
+[
+  {
+    "command": [
+      "swift",
+      "build",
+      "-c",
+      "release"
+    ],
+    "exitCode": 1,
+    "stdout": "Building for production...\n[0/4] Write sources\n[1/4] Write swift-version--1AB21518FC5DEDBE.txt\n[3/5] Compiling Probe main.swift\n/private/var/folders/q9/r2x69szj1hdd0rq2yzy4g1h40000gn/T/lumo/31399/c564621b-d4c9-438d-aac0-05958cc16225/agentlens-architecture-s_ezv7yf/Sources/Probe/main.swift:34:45: error: cannot find 'PROC_PIDPATHINFO_MAXSIZE' in scope\nvar path = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))\n                                            ^~~~~~~~~~~~~~~~~~~~~~~~\n/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/proc_info.h:732:9: note: macro 'PROC_PIDPATHINFO_MAXSIZE' unavailable: structure not supported\n#define PROC_PIDPATHINFO_MAXSIZE        (4*MAXPATHLEN)\n        ^\n/private/var/folders/q9/r2x69szj1hdd0rq2yzy4g1h40000gn/T/lumo/31399/c564621b-d4c9-438d-aac0-05958cc16225/agentlens-architecture-s_ezv7yf/Sources/Probe/main.swift:39:89: error: cannot convert value of type '(URL, AutoreleasingUnsafeMutablePointer<NSURL?>?) throws -> ()' to specified type '(URL, UnsafeMutablePointer<NSURL?>?) throws -> Void'\nlet trashAPI: (URL, UnsafeMutablePointer<NSURL?>?) throws -> Void = FileManager.default.trashItem(at:resultingItemURL:)\n                                                                                        ^\n",
+    "stderr": "warning: could not determine XCTest paths: terminated(1): /usr/bin/xcrun --sdk macosx --show-sdk-platform-path output:\n    xcrun: error: unable to lookup item 'PlatformPath' from command line tools installation\n    xcrun: error: unable to lookup item 'PlatformPath' in SDK '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk'\n    \nwarning: failed to retrieve search paths with pkg-config; maybe pkg-config is not installed\nwarning: couldn't find pc file for sqlite3\n"
+  },
+  {
+    "command": [
+      "swift",
+      "run",
+      "-c",
+      "release",
+      "--skip-build",
+      "Probe"
+    ],
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "warning: could not determine XCTest paths: terminated(1): /usr/bin/xcrun --sdk macosx --show-sdk-platform-path output:\n    xcrun: error: unable to lookup item 'PlatformPath' from command line tools installation\n    xcrun: error: unable to lookup item 'PlatformPath' in SDK '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk'\n    \nerror: exec error: No such file or directory (2): /private/var/folders/q9/r2x69szj1hdd0rq2yzy4g1h40000gn/T/lumo/31399/c564621b-d4c9-438d-aac0-05958cc16225/agentlens-architecture-s_ezv7yf/.build/arm64-apple-macosx/release/Probe .build/arm64-apple-macosx/release/Probe\n"
+  },
+  {
+    "command": [
+      "xcrun",
+      "swiftc",
+      "-typecheck",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "GlassUnavailable.swift"
+    ],
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "GlassUnavailable.swift:4:54: error: value of type 'Text' has no member 'glassEffect'\n        if #available(macOS 26.0, *) { Text(\"Probe\").glassEffect() }\n                                       ~~~~~~~~~~~~~ ^~~~~~~~~~~\n"
+  },
+  {
+    "command": [
+      "xcrun",
+      "swiftc",
+      "-typecheck",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "GlassGuarded.swift"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

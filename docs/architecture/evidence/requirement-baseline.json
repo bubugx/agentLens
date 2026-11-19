@@ -1,0 +1,17 @@
+{
+  "requirementId": "e6fd1238-c806-45c9-ad3d-50280611b915",
+  "number": "REQ-0004",
+  "revisionAtRead": 2,
+  "documentRevision": 1,
+  "statusAtRead": "ready",
+  "assigneeIds": [
+    "spec-author",
+    "product-strategist"
+  ],
+  "sessionIds": [
+    "c564621b-d4c9-438d-aac0-05958cc16225"
+  ],
+  "projectIds": [],
+  "unresolvedDiscussionsAtRead": 0,
+  "scope": "Read current bound/get document; no requirement text or workflow modifications."
+}
