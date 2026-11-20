@@ -8,7 +8,7 @@
   <a href="#功能一览">功能一览</a> ·
   <a href="#工作原理">工作原理</a> ·
   <a href="docs/implementation.md">实现说明</a> ·
-  <a href="docs/media/agentlens-intro-zh.mp4">观看介绍视频</a>
+  <a href="https://cdn.jsdelivr.net/gh/bubugx/agentLens@af20ebbd187d28f837b17ce32081b3b52ec79a76/docs/media/agentlens-intro-zh.mp4">观看介绍视频</a>
 </p>
 
 ![AgentLens 总览：磁盘、内存、趋势与 Agent 分布（预览模式，示例数据）](docs/screenshots/overview-zh.png)
@@ -62,7 +62,7 @@ AgentLens 把这些线索放进同一个工作台，帮助你回答三个问题�
 | OpenCode | `~/.local/share/opencode` |
 | Aider | `~/.aider` |
 
-除内置工具外，可通过「Agent 管理 → 接管 Agent」添加其他应用。已实际验证 Lumo：匹配应用内的可执行文件，脚本入口留空，聊天与附件目录仅监测，日志目录单独评估。见 [桌面应用接入指南](docs/agent-adoption.md)。
+除内置工具外，可通过「Agent 管理 → 接管 Agent」添加其他应用。见 [桌面应用接入指南](docs/agent-adoption.md)。
 
 还会结合系统缓存位置、项目标记、会话工作目录与进程信息补充发现。**识别覆盖受工具版本、安装方式、目录布局和系统权限影响**；支持识别某工具，不代表能关联它产生的全部文件或每一个会话。
 
@@ -76,9 +76,7 @@ AgentLens 把这些线索放进同一个工作台，帮助你回答三个问题�
 
 ## 介绍视频
 
-[![点击观看 AgentLens 中文介绍视频](docs/media/agentlens-poster.jpg)](docs/media/agentlens-intro-zh.mp4)
-
-中文旁白与字幕，1080p，30 fps，时长小于 80 秒，旁白采用约 1.6 倍语速。新版以资源碎片穿过镜头、形成归属轨道的连续动画串联动机、资源追踪、自动观测、自定义接入与可复核清理，穿插真实界面操作；不讲解技术栈。界面使用标明的预览数据。[视频说明、脚本与重建方式](docs/video/README.md)。
+[![点击观看 AgentLens 中文介绍视频](docs/media/agentlens-poster.jpg)](https://cdn.jsdelivr.net/gh/bubugx/agentLens@af20ebbd187d28f837b17ce32081b3b52ec79a76/docs/media/agentlens-intro-zh.mp4)
 
 ## 快速开始
 
@@ -175,8 +173,6 @@ Playwright 默认使用本机 Google Chrome，自动启动或复用 Vite；可�
 ```sh
 npm run probe -- /tmp/agentlens-isolated-probe
 ```
-
-本轮本地验证：37 项 Rust 测试、13 项前端测试、26 项 Playwright 交互用例通过。覆盖完整分类计数、稳定观测、成功零 I/O、安装资源保护、JSONL 日志、自定义接入、身份变化与清理边界。原始本机报告属于本地验收材料，保存在忽略的 `artifacts/` 中。
 
 ### 构建与发布桌面包
 
