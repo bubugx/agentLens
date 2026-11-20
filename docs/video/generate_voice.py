@@ -1,4 +1,4 @@
-import asyncio, json, edge_tts, pathlib, subprocess, re, imageio_ffmpeg
+import argparse, asyncio, json, edge_tts, pathlib, subprocess, re, imageio_ffmpeg
 root=pathlib.Path(__file__).resolve().parents[2]
 p=root/'docs/video/storyboard.json'
 j=json.loads(p.read_text())
@@ -17,10 +17,11 @@ async def render(s):
  print(s['id'],len(s['narration']),duration,flush=True)
  return duration
 async def main():
- ds=[]
+ parser=argparse.ArgumentParser()
+ parser.add_argument('--scene',choices=[s['id'] for s in j['scenes']])
+ args=parser.parse_args()
  for s in j['scenes']:
-  ds.append(await render(s))
- for s,d in zip(j['scenes'],ds):s['voiceDuration']=d
+  if args.scene is None or s['id']==args.scene:s['voiceDuration']=await render(s)
  p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
- print('TOTAL',sum(ds),flush=True)
+ print('TOTAL',sum(s['voiceDuration'] for s in j['scenes']),flush=True)
 asyncio.run(main())

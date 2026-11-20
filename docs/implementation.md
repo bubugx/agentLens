@@ -121,7 +121,7 @@ SQLite 使用 WAL 与事务，保存偏好、监测范围、基线、索引、�
 
 执行方式见 [README](../README.md#开发与验证)。规则测试位于 `collector.rs`，发现与取消位于 `inventory.rs`，索引与事务位于 `store.rs`，计划过期、身份变化、journal 与失败流程位于 `lib.rs`；前端规则与交互检查位于 `src/lib/*.test.ts` 和 `tests/*.spec.ts`。
 
-本轮本机验证为 37 项 Rust、13 项 Vitest、26 项 Playwright 通过；Lumo 已在 macOS 原生界面接入并保存规则。真实用户文件未执行清理，真实进程未执行终止。原始报告含本机环境线索，不纳入公开源码；本地归档在忽略的 `artifacts/`。
+本机报告可能包含环境线索，不纳入公开源码；本地验收材料保存在忽略的 `artifacts/`。
 
 v0.1.2 的[发布工作流](https://github.com/bubugx/agentLens/actions/runs/44577508145)已完成四个目标的测试与构建，并在 [GitHub Release](https://github.com/bubugx/agentLens/releases/tag/v0.1.2) 公开两个 macOS 架构的 DMG、Windows 安装程序、DEB 与 AppImage。工作流结果证明对应提交的构建 / 自动测试状态；目标系统交互、签名和最低版本兼容仍以实测为准。当前源码与本文为实现依据，旧 Swift 方案已移出公开文档树。
 

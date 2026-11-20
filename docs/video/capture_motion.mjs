@@ -65,10 +65,10 @@ try {
       await p.getByRole("tab", { name: "自定义识别规则", exact: true }).click();
     },
     async (p) => {
-      await p.getByLabel("Agent 名称", { exact: true }).fill("Lumo");
+      await p.getByLabel("Agent 名称", { exact: true }).fill("桌面助手");
       await p
         .getByLabel("可执行文件路径", { exact: true })
-        .fill("/Applications/Lumo.app/Contents/MacOS/lumo");
+        .fill("/Applications/ExampleAgent.app/Contents/MacOS/example-agent");
       await p.getByRole("button", { name: "预览接管范围", exact: true }).click();
     },
   );

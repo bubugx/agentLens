@@ -1,0 +1,38 @@
+name: Refresh product media
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/media/agentlens-intro-zh.mp4
+      - docs/media/agentlens-intro-zh.srt
+      - docs/media/agentlens-intro-zh.vtt
+      - scripts/refresh-media-checksums.mjs
+      - .github/workflows/product-media.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: product-media
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Update public films, subtitles and their checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p artifacts/media-sync
+          gh api --paginate "repos/$GH_REPO/releases" --jq '.[] | select(.draft == false) | .tag_name' > artifacts/media-sync/tags.txt
+          while IFS= read -r tag; do
+            has_film=$(gh release view "$tag" --json assets --jq 'any(.assets[]; .name == "agentlens-intro-zh.mp4")')
+            if [ "$has_film" != true ]; then continue; fi
+            gh release download "$tag" --pattern SHA256SUMS.txt --dir artifacts/media-sync --clobber
+            node scripts/refresh-media-checksums.mjs artifacts/media-sync/SHA256SUMS.txt
+            gh release upload "$tag" docs/media/agentlens-intro-zh.mp4 docs/media/agentlens-intro-zh.srt docs/media/agentlens-intro-zh.vtt artifacts/media-sync/SHA256SUMS.txt --clobber
+          done < artifacts/media-sync/tags.txt

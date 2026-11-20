@@ -121,7 +121,7 @@ def render(t):
    pp,_,_=projection(ring,t);d.line(list(map(tuple,pp)),fill=tuple(int(v*.32) for v in c),width=1)
    xy,_,_=projection([h],t);hx,hy=xy[0]
    d.ellipse((hx-7,hy-7,hx+7,hy+7),fill=c)
-   label(im,(hx,hy-125),['Codex','Claude Code','Cursor','Lumo'][g],27,c,anchor='mm',bold=True)
+   label(im,(hx,hy-125),['Codex','Claude Code','Cursor','自定义工具'][g],27,c,anchor='mm',bold=True)
    if g==3:label(im,(hx,hy-90),'已接入',20,c,anchor='mm')
  # A travelling optical plane gives the reveal a physical direction.
  if scenes[1]['start']<t<scenes[1]['start']+5:
@@ -235,10 +235,14 @@ def main():
  sheet=Image.new('RGB',(1280,360*4),(3,10,16))
  for i,im in enumerate(thumbs):sheet.paste(im,((i%2)*640,(i//2)*360))
  sheet.save(OUT/'agentlens-contact-sheet.jpg',quality=92)
- render(scenes[-1]['start']+2).save(OUT/'agentlens-poster.jpg',quality=94)
+ poster=render(scenes[-1]['start']+2)
+ d=ImageDraw.Draw(poster)
+ d.ellipse((900,850,1020,970),fill=(5,18,26),outline=MINT,width=3)
+ d.polygon([(946,881),(946,939),(989,910)],fill=MINT)
+ poster.save(OUT/'agentlens-poster.jpg',quality=94)
  if args.preview:print(f'Preview: {DURATION:.2f}s');return
  track=audio();target=OUT/'agentlens-intro-zh.mp4'
- proc=subprocess.Popen([FFMPEG,'-y','-v','warning','-f','rawvideo','-vcodec','rawvideo','-s',f'{W}x{H}','-pix_fmt','rgb24','-r',str(FPS),'-i','-','-i',str(track),'-c:v','libx264','-preset','fast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-t',str(DURATION),'-movflags','+faststart',str(target)],stdin=subprocess.PIPE)
+ proc=subprocess.Popen([FFMPEG,'-y','-v','warning','-f','rawvideo','-vcodec','rawvideo','-s',f'{W}x{H}','-pix_fmt','rgb24','-r',str(FPS),'-i','-','-i',str(track),'-c:v','libx264','-preset','fast','-crf','21','-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-t',str(DURATION),'-movflags','+faststart',str(target)],stdin=subprocess.PIPE)
  for i in range(round(DURATION*FPS)):
   proc.stdin.write(render(i/FPS).tobytes())
   if i%(FPS*5)==0:print(f'Render {i/FPS:.0f}/{DURATION:.1f}s',flush=True)
